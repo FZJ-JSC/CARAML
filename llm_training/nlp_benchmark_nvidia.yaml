@@ -1,0 +1,370 @@
+name:    llm-all
+outpath: llm_benchmark_nvidia
+comment: llm benchmark jube script
+# Megatron-LM benchmark for 
+  # JEDI-GH200 NVIDIA Node:
+  #     4× NVIDIA GH200 Grace-Hopper Superchip 
+  #     CPU: NVIDIA Grace (Arm Neoverse-V2), 72 cores at 3.1 GHz base frequency; 120 GB LPDDR5X memory at 512 GB/s (8532 MHz)
+  #     GPU: NVIDIA Hopper H100, 132 multiprocessors, 96 GB HBM3 memory at 4 TB/s
+  #       NVIDIA NVLink-C2C CPU-to-GPU link at 900 GB/s
+  #     Network: 4× InfiniBand NDR200 (Connect-X7)
+  #     TDP: 680 W (for full GH200 superchip)
+
+  # JURECA-GH200 NVIDIA:
+  #     1× NVIDIA GH200 Grace-Hopper Superchip
+  #     CPU: 1 × NVIDIA Grace, 72 cores
+  #     GPU: 1 × NVIDIA H100
+  #     Memory: 480 GiB LPDDR5X and 96 GiB HBM3
+  #     Network: 1 × NVIDIA ConnectX-7 @ 2 × EDR (200 Gbit/s)
+
+  # JURECA-WAIH100 NVIDIA Node:
+  #     4x NVIDIA H100 Hopper-NVLink
+  #     CPU: 2x Intel Xeon Platinum 8462Y (Sapphire Rapids) CPUs
+  #      A total of 64 computing cores per node Ã 2.8 GHz (Base Freq.)
+  #     Memory: 512 GB DDR5 RAM per node
+  #     GPU: 4x NVIDIA H100 GPUs (incl. NVLink Interconnect);94 GB HBM2e per GPU
+
+  # JURECA-H100 NVIDIA Node:
+  #     1× NVIDIA H100 Hopper-PCIe
+  #     CPU: Intel Xeon Platinum Sapphire Rapid 8452Y processor; 2 sockets, 36 cores per socket,\
+  #      SMT-2 (total: 2×36×2 = 144 threads) (details for Intel Xeon Platinum 8452Y on Intel ARK)
+  #     Memory: 512 GiB DDR5-4800 RAM (of which at least 20 GB is taken by the system software stack,\
+  #      including the file system); 256 GB per socket;
+  #     GPU: 4 × NVIDIA H100 PCIe GPUs, each with 80 GB memory;
+  #     Network: 1 × 1x BlueField-2 ConnectX-6 DPU @ EDR (100 Gbit/s)
+
+  # JURECA-A100 NVIDIA Node:
+  #     4x NVIDIA A100 Ampere-SXM
+  #     CPU: 2× AMD EPYC 7742, 2× 64 cores, 2.25 GHz
+  #     Memory: 512 (16× 32) GB DDR4, 3200 MHz
+  #     GPU: 4× NVIDIA A100 GPU, 4× 40 GB HBM2e
+  #     Network: 2× InfiniBand HDR (NVIDIA Mellanox Connect-X6)
+parameterset:
+  - name: systemInfo
+    parameter:
+      - {name: system_name, type: str, tag: "Jedi",    _: "Jedi"}
+      - {name: system_name, type: str, tag: "GH200",   _: "GH200"}
+      - {name: system_name, type: str, tag: "WAIH100", _: "WAIH100"}
+      - {name: system_name, type: str, tag: "H100",    _: "H100"}
+      - {name: system_name, type: str, tag: "A100",    _: "A100"}
+      - {name: system_version,         mode: shell,    _: "echo 2024.01"}
+  - name: modelParameter
+    parameter:
+      - {name: modelidx,          type: int, mode: python, _: "{'800M': '0', '13B': '1', '175B': '2'}['$nlp_model_size']"}
+      # tp_size is preferred to be <=gpus_per node, to limit communication overhead
+      - {name: tp_size,           type: int, mode: python, _: "[1,2,8][$modelidx]"}
+      # pp_size must be a divisor of nlayers
+      - {name: pp_size,           type: int, mode: python, _: "[1,2,8][$modelidx]"}
+      - {name: micro_batch_size,  type: int, mode: python, _: "[4,2,2][$modelidx]"}
+      - {name: gas,               type: int, mode: python, _: "[1,64,64][$modelidx]"}
+      - {name: nhidden,           type: int, mode: python, _: "[2048,5120,12288][$modelidx]"}
+      - {name: nlayers,           type: int, mode: python, _: "[16,40,96][$modelidx]"}
+      - {name: nheads,            type: int, mode: python, _: "[8,32,96][$modelidx]"}
+      # global_batch_size has to be divisible by dp_size*micro_batch_size*gas; 
+      - {name: global_batch_size, type: int, tag: "800M", seperator: ";", _: 512}
+      - {name: global_batch_size, type: int, tag: "!800M", mode: python, 
+         _: "int(($nodes * $gpus_per_node) / ($pp_size * $tp_size) * $micro_batch_size * $gas)"}
+      - {name: bench_dir,            type: str,               _: "$jube_benchmark_home/.."}
+  - name: systemParameter
+    init_with: platform.xml
+    parameter: 
+      - {name: nlp_model_size,   type: str, tag: "800M",   _: "800M"}
+      - {name: nlp_model_size,   type: str, tag: "13B",    _: "13B"}
+      - {name: nlp_model_size,   type: str, tag: "175B",   _: "175B"}
+      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-02.html
+      # nvcr.io/nvidia/pytorch:24.02-py3
+      - {name: singularity_file, type: str, tag: "Jedi|GH200",
+         _: "$bench_dir/containers/ngc_2402_pytorch23_py310_cuda123_nccl219_arm.sif"}
+      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-06.html
+      # nvcr.io/nvidia/pytorch:24.06-py3
+      - {name: singularity_file, type: str, tag: "WAIH100|H100|A100", 
+          _: "$bench_dir/containers/ngc2406_pytorch24_py310_cuda125_nncl2215.sif"}
+      - {name: sequence_length,  type: int,                _: 2048}
+      - {name: gpus_per_node,    type: int, tag: "!GH200", _: 4}
+      - {name: gpus_per_node,    type: int, tag: "GH200",  _: 1}
+      - {name: nodes,            type: int, tag: "800M",   _: 1}
+      - {name: nodes,            type: int, tag: "13B",    _: 44}
+      - {name: nodes,            type: int, tag: "175B",   _: 16}
+      - {name: timelimit,                                  _: "00:32:00"}
+      - {name: oottime,          type: int,                _: 120}
+      - {name: ootsignal,        type: int,                _: 12}
+      - {name: taskspernode,     type: int,                _: 1}
+      - {name: tasks,            type: int, mode: python, update_mode: step, _: "$taskspernode*$nodes"}
+      - {name: hint,                                      _: "nomultithread"}
+      - {name: gres,                                      _: "gpu:$gpus_per_node"}
+      - {name: outlogfile,                                _: "job.out"}
+      - {name: outerrfile,                                _: "job.err"}
+      - {name: account,         tag: "!WAIH100",          _: "zam"}
+      - {name: account,         tag: "WAIH100",           _: "westai0005"}
+      - {name: queue,           mode: python,             
+       _: "{'Jedi': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-wai','H100': 'dc-h100' ,'A100': 'dc-gpu'}['${system_name}']"}
+      - {name: threadspertask,  type: int, mode: python,
+        _: "{'Jedi': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128'}['${system_name}']"}
+      - {name: ready_file,                _: "ready"}
+      - {name: error_file,                _: "error"}
+      - {name: additional_job_config, mode: text,                     _: "#SBATCH --signal=B:${ootsignal}@${oottime}"}
+      - {name: modelargs,             tag: "800M",  mode: text,        _: --fp16}
+      - {name: modelargs,             tag: "13B",  mode: text,        _: --ffn-hidden-size 20480 --fp16}
+      - {name: modelargs,             tag: "175B", mode: text,        _: --bf16}
+      - name: optimizerargs
+        mode: text
+        _: >
+          --optimizer adam 
+          --adam-beta1 0.9 
+          --adam-beta2 0.999 
+          --adam-eps 1e-8 
+          --lr 1e-4 
+          --min-lr 1e-5 
+          --lr-decay-style cosine 
+          --lr-decay-samples 128_953_125 
+          --lr-warmup-samples 216_320 
+          --clip-grad 1.0 
+          --weight-decay 1e-1 
+          --use-distributed-optimizer
+      - name: gptargs
+        _: >
+          --num-layers $nlayers 
+          --hidden-size $nhidden 
+          --num-attention-heads $nheads 
+          --seq-length $sequence_length 
+          --max-position-embeddings $sequence_length 
+          --micro-batch-size $micro_batch_size 
+          --global-batch-size $global_batch_size 
+          --train-samples 300_000_000 
+          --vocab-file $$VOCAB_FILE 
+          --merge-file $$MERGE_FILE 
+          --tokenizer-type GPT2BPETokenizer 
+          --loss-scale-window 500 
+          --hysteresis 2 
+          --min-loss-scale 1.0
+          --initial-loss-scale 4096 
+          --init-method-std 0.0048
+          --seed 42 
+          --position-embedding-type rope 
+          --use-flash-attn 
+          --sequence-parallel 
+          --recompute-activations 
+          --recompute-granularity selective 
+          $modelargs 
+          $optimizerargs 
+          --exit-duration-in-mins 30
+      - name: outputargs
+        _: > 
+          --log-interval 5
+          --save-interval 1500
+          --eval-interval 20
+          --eval-iters 15
+          --tensorboard-dir $$TENSORBOARD_PATH
+          --tensorboard-queue-size 5
+          --log-timers-to-tensorboard
+          --log-batch-size-to-tensorboard
+          --log-validation-ppl-to-tensorboard 
+      - name: ibcomm
+        tag: "!GH200"
+        _: |
+          # setting IB for out of band communication
+          export NCCL_SOCKET_IFNAME=ib0
+          export GLOO_SOCKET_IFNAME=ib0
+      - name: ibcomm
+        tag: "GH200"
+        _: ""
+      - name: rdzv_conf
+        tag: "!Jedi"
+        _: >
+          --rdzv_conf=is_host=$(if ((SLURM_NODEID)); then echo False; else echo True; fi)
+      - name: rdzv_conf
+        tag: "Jedi"
+        _: >
+          --rdzv_conf=is_host=True  
+      - name: masteri
+        tag: "!Jedi"
+        _: |
+          MASTER_ADDR="${MASTER_ADDR}i"
+      - name: masteri
+        tag: "Jedi"
+        _: ""
+      - name: executable
+        mode: python
+        separator: ";"
+        update_mode: step
+        _:
+          "{'benchmark': \"bash -c \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt &\\n(${args_executable}) &\\nwait\\ncd $$OLDDIR\"}['$jube_step_name']"
+      - name: preprocess
+        mode: text
+        update_mode: step
+        separator: |
+        _: |
+          echo "START TIME: $(date)"
+          echo "Submitted batch job $${SLURM_JOBID}"
+          export SRUN_CPUS_PER_TASK=$${SLURM_CPUS_PER_TASK}
+          export ROOT_DIR=$jube_benchmark_home
+          export CUDA_VISIBLE_DEVICES=0,1,2,3
+          if [ "x$$ROOT_DIR" = "x" ]; then
+              echo "ROOT_DIR is not set. Please set it to the root directory of benchmark" >&2
+              exit 1
+          fi
+          source $$ROOT_DIR/llm_variables.bash
+          [ "x$$DATA_OUTPUT_PATH" = x ] &&  DATA_OUTPUT_PATH="$$ROOT_OUTPUT_DIR"/"$nlp_model_size"_model/"$$SLURM_JOB_ID"
+          [ "x$$CHECKPOINT_PATH" = x ] && CHECKPOINT_PATH=$$DATA_OUTPUT_PATH/checkpoints
+          [ "x$$TENSORBOARD_PATH" = x ] &&  TENSORBOARD_PATH=$$DATA_OUTPUT_PATH/tensorboard
+          [ "x$$LOGS_PATH" = x ] &&  LOGS_PATH=$$DATA_OUTPUT_PATH/logs
+          mkdir -p $$LOGS_PATH
+
+          OLDDIR=$(pwd)
+          cd "$ROOT_DIR/Megatron-LM" || exit 1
+
+          rm -f megatron/fused_kernels/build/lock
+          CLEAN_PREV_JIT_BUILD=0
+          ((CLEAN_PREV_JIT_BUILD)) && rm -rf megatron/fused_kernels/{build,__pycache__}
+
+      
+          MASTER_ADDR="$$(scontrol show hostnames "$$SLURM_JOB_NODELIST" | head -n 1)"
+          $masteri
+          MASTER_PORT=6000
+          export LAUNCHER="python -u -m fixed_torch_run \
+              --nproc_per_node $gpus_per_node \
+              --nnodes $nodes \
+              --rdzv_endpoint $MASTER_ADDR:$MASTER_PORT \
+              --rdzv_backend c10d \
+              --max_restarts 0 \
+              --node_rank $SLURM_PROCID \
+              $rdzv_conf \
+              --tee 3 \
+              "
+          export CMD=" \
+              $(pwd)/pretrain_gpt.py \
+              --tensor-model-parallel-size $tp_size \
+              --pipeline-model-parallel-size $pp_size \
+              $gptargs \
+              $outputargs \
+              --save $CHECKPOINT_PATH \
+              --data-path $LLM_DATA_PATH \
+              --split 7,3,1 \
+              --distributed-backend nccl \
+              "
+          if [ "$LOAD_CHECKPOINTS" = true ] ; then
+              export CMD="$CMD\
+                  --load $CHECKPOINT_PATH \
+                  "
+          fi
+          # Necessary for some Megatron-LM settings. We set it all the time just
+          # to be safe.
+          export CUDA_DEVICE_MAX_CONNECTIONS=1
+
+          # With CUDA_LAUNCH_BLOCKING=1, NCCL/2.12.7-1-CUDA-11.5 is needed
+          # since NCCL/2.14.3-1-CUDA-11.5 and later versions cause internal streams clashes
+          # export CUDA_LAUNCH_BLOCKING=1
+
+          # force crashing on nccl issues like hanging broadcast
+          export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
+
+          $ibcomm
+          
+          # handle timeouts
+          export NCCL_IB_TIMEOUT=50
+          export UCX_RC_TIMEOUT=4s
+          export NCCL_IB_RETRY_CNT=10
+
+          # NCCL and Torch debug
+          export LOGLEVEL=INFO 
+          # export NCCL_DEBUG=INFO
+          # export NCCL_DEBUG_SUBSYS=ALL
+          # export TORCH_DISTRIBUTED_DEBUG=INFO
+          export TORCHELASTIC_ERROR_FILE=/tmp/torch-elastic-error.json
+          
+          # for using pre-installed kernels
+          export DS_BUILD_OPS=1
+
+          function oothandler {
+              echo Received out-of-time signal, creating file "$ready_file" and exiting at $(date) with oottime "$oottime"
+              touch $OLDDIR/$ready_file
+              exit $ootsignal
+          }
+          # Trap out-of-time signal to create the error file
+          trap oothandler $ootsignal
+  - name: executeset
+    init_with: platform.xml
+    parameter:
+      - name: args_starter
+        mode: text
+        tag: "Jedi"
+        separator: |
+        _: |
+          --cpu_bind=v --mpi=pmi2 apptainer exec  --bind=${jube_benchmark_home} --nv ${singularity_file}
+      - name: args_starter
+        mode: text
+        tag: "!Jedi"
+        separator: |
+        _: |
+          --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home} --nv ${singularity_file}
+      - name: args_executable
+        mode: text
+        separator: |
+        _:  |
+          srun --overlap nvidia-smi  --query-gpu=index,timestamp,name,power.draw --format=csv -f ${jube_benchmark_home}/${system_name}_energy_${SLURM_JOB_NAME}_${SLURM_JOB_ID}.csv --loop-ms=1000 
+
+
+patternset:
+   - name: perf_patterns
+     pattern:
+      - {name: iter_pat, type: int, _: "iteration\\s+$jube_pat_int/\\s*$jube_pat_nint"}
+      - {name: iterations, type: int, mode: python, _: "$iter_pat_max"}
+      - {name: tflops_pat, type: float, _: "TFLOPs:\\s+$jube_pat_fp"}
+      - {name: elp_pat, type: float, _: "elapsed time per iteration \\(s\\):\\s+$jube_pat_fp"}
+      - {name: tokens_per_second, type: float, mode: python, _: "(1.0/$elp_pat_avg)*$global_batch_size*$sequence_length"}
+      - {name: jobid, type: int, _: "Submitted batch job $jube_pat_int" }
+      - {name: throughput_in_time, type: float, mode: python, _: "(20000000/$tokens_per_second)"}
+
+analyser:
+    name: analyse
+    reduce: false
+    use: perf_patterns
+    analyse:
+        step: benchmark
+        file: job.out
+
+result:
+    use: analyse
+    table:
+      name: result
+      style: pretty
+      sort: iter_pat
+      column: 
+        - {title: "system", _: system_name}
+        - {title: "version", _: system_version}
+        - {title: "queue", _: queue}
+        - {title: "JobID", _: jobid}
+        - {title: "Job_Time", _: timelimit}
+        - {title: "Model_Size", _: nlp_model_size}
+        - {title: "Nodes", _: nodes}
+        - {title: "Batch_Size", _: global_batch_size}
+        - {title: "Pipeline_Parallel", _: pp_size}
+        - {title: "Tensor_Parallel", _: tp_size}
+        - {title: "Iterations", _: iterations}
+        # - {title: "TFLOPs logged", _: tflops_pat_cnt}
+        - {title: "Avg_TFLOPs/GPU", format: ".2f", _: tflops_pat_avg}
+        - {title: "Tokens/sec",format: ".2f", _: tokens_per_second}
+        - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
+
+step:
+    - name: get_source
+      export: true
+      do:
+        - export ROOT_DIR=$jube_benchmark_home
+        - bash $ROOT_DIR/setup_llm.sh
+    - name:   benchmark
+      depend: get_source
+      use:
+        - systemInfo
+        - systemParameter
+        - modelParameter
+        - executeset
+        - from: platform.xml
+          _: jobfiles
+        - from: platform.xml
+          _: executesub
+      do:
+          done_file:  $ready_file
+          error_file: $error_file
+          _:         $submit $submit_script
+

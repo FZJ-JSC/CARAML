@@ -1,0 +1,10 @@
+containers/
+llm_training/llm_benchmark_nvidia/
+llm_training/Megatron-LM/
+llm_training/output/
+llm_training/megatron_patch_applied
+llm_training/nlp_build_done
+llm_training/llm_data/index-cache
+resnet50/ipu_packages
+resnet50/rocm-tf-container-packages
+resnet50/tf_resnet50

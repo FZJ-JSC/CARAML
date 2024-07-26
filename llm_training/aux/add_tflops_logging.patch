@@ -1,0 +1,87 @@
+diff --git a/megatron/training.py b/megatron/training.py
+index cebe085..c05cc69 100644
+--- a/megatron/training.py
++++ b/megatron/training.py
+@@ -598,16 +598,71 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
+     if iteration % args.log_interval == 0:
+         elapsed_time = timers('interval-time').elapsed(barrier=True)
+         elapsed_time_per_iteration = elapsed_time / total_iterations
++        
++        # Not checking for variable sequence length to compute throughput
++        seq_len = args.seq_length
++        hidden_size = args.hidden_size
++        num_layers = args.num_layers
++        vocab_size = args.padded_vocab_size
++
++        samples_per_sec = batch_size / elapsed_time_per_iteration
++        samples_per_sec_per_replica = samples_per_sec / args.data_parallel_size
++        tokens_per_sec = samples_per_sec * seq_len
++        tokens_per_sec_per_replica = tokens_per_sec / args.data_parallel_size
++
++        # General TFLOPs formula (borrowed from Equation 3 in Section 5.1 of
++        # https://arxiv.org/pdf/2104.04473.pdf).
++        # The factor of 4 is when used with activation check-pointing,
++        # otherwise it will be 3
++        checkpoint_activations_factor = 4 if args.recompute_granularity else 3
++
++        # GLU activations double the hidden states in the upscaling
++        # feed-forward in each transformer layer
++        # This leads to 16bsh^2 instead of 8bsh^2 per first feed-forward
++        # layer in MLP, thus we increase the coefficient by 8.
++        # Refer to
++        # https://github.com/bigscience-workshop/Megatron-DeepSpeed/pull/283#issue-1260805063
++        # for more details.
++
++        coefficient = 32 if args.swiglu else 24
++
++        flops_per_iteration = (
++            coefficient * checkpoint_activations_factor * batch_size
++            * seq_len * num_layers * (hidden_size ** 2)
++        ) * (
++            1.
++            + (seq_len / (6. * hidden_size))
++            + (vocab_size / (16. * num_layers * hidden_size))
++        )
++        tflops = (
++            flops_per_iteration
++            / (elapsed_time_per_iteration * args.world_size * (10 ** 12))
++        )
++
+         if writer:
+             if args.log_timers_to_tensorboard:
+                 writer.add_scalar('iteration-time',
+                                   elapsed_time_per_iteration, iteration)
++                writer.add_scalar('iteration-time vs samples',
++                                  elapsed_time_per_iteration, args.consumed_train_samples)
++                writer.add_scalar('iteration-time vs tokens',
++                                  elapsed_time_per_iteration, args.consumed_train_samples * args.seq_length)
++                writer.add_scalar('samples per second',
++                                  samples_per_sec, iteration)
++                writer.add_scalar('samples per second per replica',
++                                  samples_per_sec_per_replica, iteration)
++                writer.add_scalar('tokens per second',
++                                  tokens_per_sec, iteration)
++                writer.add_scalar('tokens per second per replica',
++                                  tokens_per_sec_per_replica, iteration)
++                writer.add_scalar('TFLOPs per gpu (estimated)',
++                                  tflops, iteration)
+         log_string = ' iteration {:8d}/{:8d} |'.format(
+             iteration, args.train_iters)
+         log_string += ' consumed samples: {:12d} |'.format(
+             args.consumed_train_samples)
+-        log_string += ' elapsed time per iteration (ms): {:.1f} |'.format(
+-            elapsed_time_per_iteration * 1000.0)
++        log_string += ' elapsed time per iteration (s): {:.4f} |'.format(
++            elapsed_time_per_iteration)
+         log_string += ' learning rate: {:.3E} |'.format(learning_rate)
+         log_string += ' global batch size: {:5d} |'.format(batch_size)
+         for key in total_loss_dict:
+@@ -629,6 +684,8 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
+             total_loss_dict[skipped_iters_key])
+         log_string += ' number of nan iterations: {:3d} |'.format(
+             total_loss_dict[nan_iters_key])
++        log_string += ' samples per second: {:.3f} |'.format(samples_per_sec)
++        log_string += ' TFLOPs: {:.2f} |'.format(tflops)
+         total_loss_dict[advanced_iters_key] = 0
+         total_loss_dict[skipped_iters_key] = 0
+         total_loss_dict[nan_iters_key] = 0
