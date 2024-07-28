@@ -1,5 +1,5 @@
 name:    llm-all
-outpath: llm_benchmark_nvidia
+outpath: llm_benchmark_nvidia_run
 comment: llm benchmark jube script
 # Megatron-LM benchmark for 
   # JEDI-GH200 NVIDIA Node:
@@ -48,6 +48,7 @@ parameterset:
       - {name: system_name, type: str, tag: "H100",    _: "H100"}
       - {name: system_name, type: str, tag: "A100",    _: "A100"}
       - {name: system_version,         mode: shell,    _: "echo 2024.01"}
+
   - name: modelParameter
     parameter:
       - {name: modelidx,          type: int, mode: python, _: "{'800M': '0', '13B': '1', '175B': '2'}['$nlp_model_size']"}
@@ -61,48 +62,15 @@ parameterset:
       - {name: nlayers,           type: int, mode: python, _: "[16,40,96][$modelidx]"}
       - {name: nheads,            type: int, mode: python, _: "[8,32,96][$modelidx]"}
       # global_batch_size has to be divisible by dp_size*micro_batch_size*gas; 
-      - {name: global_batch_size, type: int, tag: "800M", seperator: ";", _: 512}
+      - {name: global_batch_size, type: int, tag: "800M+!container", seperator: ",", _: "2048"}
+      #16,32,64,128,256,512,1024,2048,4096
       - {name: global_batch_size, type: int, tag: "!800M", mode: python, 
          _: "int(($nodes * $gpus_per_node) / ($pp_size * $tp_size) * $micro_batch_size * $gas)"}
-      - {name: bench_dir,            type: str,               _: "$jube_benchmark_home/.."}
-  - name: systemParameter
-    init_with: platform.xml
-    parameter: 
+      - {name: root_dir,            type: str,               _: "$jube_benchmark_home/.."}
       - {name: nlp_model_size,   type: str, tag: "800M",   _: "800M"}
       - {name: nlp_model_size,   type: str, tag: "13B",    _: "13B"}
       - {name: nlp_model_size,   type: str, tag: "175B",   _: "175B"}
-      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-02.html
-      # nvcr.io/nvidia/pytorch:24.02-py3
-      - {name: singularity_file, type: str, tag: "Jedi|GH200",
-         _: "$bench_dir/containers/ngc_2402_pytorch23_py310_cuda123_nccl219_arm.sif"}
-      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-06.html
-      # nvcr.io/nvidia/pytorch:24.06-py3
-      - {name: singularity_file, type: str, tag: "WAIH100|H100|A100", 
-          _: "$bench_dir/containers/ngc2406_pytorch24_py310_cuda125_nncl2215.sif"}
       - {name: sequence_length,  type: int,                _: 2048}
-      - {name: gpus_per_node,    type: int, tag: "!GH200", _: 4}
-      - {name: gpus_per_node,    type: int, tag: "GH200",  _: 1}
-      - {name: nodes,            type: int, tag: "800M",   _: 1}
-      - {name: nodes,            type: int, tag: "13B",    _: 44}
-      - {name: nodes,            type: int, tag: "175B",   _: 16}
-      - {name: timelimit,                                  _: "00:32:00"}
-      - {name: oottime,          type: int,                _: 120}
-      - {name: ootsignal,        type: int,                _: 12}
-      - {name: taskspernode,     type: int,                _: 1}
-      - {name: tasks,            type: int, mode: python, update_mode: step, _: "$taskspernode*$nodes"}
-      - {name: hint,                                      _: "nomultithread"}
-      - {name: gres,                                      _: "gpu:$gpus_per_node"}
-      - {name: outlogfile,                                _: "job.out"}
-      - {name: outerrfile,                                _: "job.err"}
-      - {name: account,         tag: "!WAIH100",          _: "zam"}
-      - {name: account,         tag: "WAIH100",           _: "westai0005"}
-      - {name: queue,           mode: python,             
-       _: "{'Jedi': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-wai','H100': 'dc-h100' ,'A100': 'dc-gpu'}['${system_name}']"}
-      - {name: threadspertask,  type: int, mode: python,
-        _: "{'Jedi': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128'}['${system_name}']"}
-      - {name: ready_file,                _: "ready"}
-      - {name: error_file,                _: "error"}
-      - {name: additional_job_config, mode: text,                     _: "#SBATCH --signal=B:${ootsignal}@${oottime}"}
       - {name: modelargs,             tag: "800M",  mode: text,        _: --fp16}
       - {name: modelargs,             tag: "13B",  mode: text,        _: --ffn-hidden-size 20480 --fp16}
       - {name: modelargs,             tag: "175B", mode: text,        _: --bf16}
@@ -129,7 +97,7 @@ parameterset:
           --seq-length $sequence_length 
           --max-position-embeddings $sequence_length 
           --micro-batch-size $micro_batch_size 
-          --global-batch-size $global_batch_size 
+          --global-batch-size ${global_batch_size}
           --train-samples 300_000_000 
           --vocab-file $$VOCAB_FILE 
           --merge-file $$MERGE_FILE 
@@ -147,12 +115,12 @@ parameterset:
           --recompute-granularity selective 
           $modelargs 
           $optimizerargs 
-          --exit-duration-in-mins 30
+          --exit-duration-in-mins 60
       - name: outputargs
         _: > 
           --log-interval 5
           --save-interval 1500
-          --eval-interval 20
+          --eval-interval 2000
           --eval-iters 15
           --tensorboard-dir $$TENSORBOARD_PATH
           --tensorboard-queue-size 5
@@ -183,35 +151,92 @@ parameterset:
       - name: masteri
         tag: "Jedi"
         _: ""
+
+  - name: systemParameter
+    init_with: platform.xml
+    parameter:
+      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-02.html
+      # nvcr.io/nvidia/pytorch:24.02-py3
+      - {name: singularity_file, type: str, tag: "Jedi|GH200",
+         _: "$root_dir/containers/ngc_2402_pytorch23_py310_cuda123_nccl219_arm.sif"}
+      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-06.html
+      # nvcr.io/nvidia/pytorch:24.06-py3
+      - {name: singularity_file, type: str, tag: "WAIH100|H100|A100", 
+          _: "$root_dir/containers/ngc_2406_pytorch24_py310_cuda125_nccl2215.sif"}
+      - {name: gpus_per_node,    type: int, tag: "!GH200+!container", _: 4}
+      - {name: gpus_per_node,    type: int, tag: "H100+container", _: 1}
+      - {name: gpus_per_node,    type: int, tag: "GH200",  _: 1}
+      - {name: nodes,            type: int, tag: "container",   _: 1}
+      - {name: nodes,            type: int, tag: "800M",   _: 1}
+      - {name: nodes,            type: int, tag: "13B",    _: 44}
+      - {name: nodes,            type: int, tag: "175B",   _: 16}
+      - {name: total_devices,            type: int, mode: python, update_mode: step, _: "$gpus_per_node*$nodes"}
+      - {name: timelimit,        tag: "container",         _: "01:30:00"}
+      - {name: timelimit,        tag: "!container",         _: "00:30:00"}
+      - {name: oottime,          type: int,                _: 120}
+      - {name: ootsignal,        type: int,                _: 12}
+      - {name: taskspernode,     type: int,                _: 1}
+      - {name: tasks,            type: int, mode: python, update_mode: step, _: "$taskspernode*$nodes"}
+      - {name: hint,                                      _: "nomultithread"}
+      - {name: gres,                                      _: "gpu:$gpus_per_node"}
+      - {name: outlogfile,                                _: "job.out"}
+      - {name: outerrfile,                                _: "job.err"}
+      - {name: account,         tag: "!WAIH100",          _: "zam"}
+      - {name: account,         tag: "WAIH100",           _: "westai0005"}
+      - {name: queue,           mode: python,             
+       _: "{'Jedi': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-wai','H100': 'dc-h100' ,'A100': 'dc-gpu'}['${system_name}']"}
+      - {name: threadspertask,  type: int, mode: python, tag: "!container" ,
+        _: "{'Jedi': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128'}['${system_name}']"}
+      - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
+      - {name: ready_file,                _: "ready"}
+      - {name: error_file,                _: "error"}
+      - {name: additional_job_config, mode: text,                     _: "#SBATCH --signal=B:${ootsignal}@${oottime}"}
+      - name: variable_export
+        mode: shell
+        tag: "container+(H100|GH200)"
+        separator: "!"
+        _: |
+            echo "export BENCH_DIR=${jube_benchmark_home}"
+            echo "export ACCELERATOR=$system_name"
+      - {name: measurement,  _: $variable_export}
       - name: executable
         mode: python
         separator: ";"
+        tag: "!container"
         update_mode: step
         _:
           "{'benchmark': \"bash -c \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt &\\n(${args_executable}) &\\nwait\\ncd $$OLDDIR\"}['$jube_step_name']"
+      - name: executable
+        mode: python
+        separator: "!"
+        tag: "container"
+        update_mode: step
+        _: 
+          "{'get_container': 'bash  ${jube_benchmark_home}/get_pytorch_container.sh'}['$jube_step_name']"
       - name: preprocess
         mode: text
+        tag: "!container"
         update_mode: step
         separator: |
         _: |
           echo "START TIME: $(date)"
           echo "Submitted batch job $${SLURM_JOBID}"
           export SRUN_CPUS_PER_TASK=$${SLURM_CPUS_PER_TASK}
-          export ROOT_DIR=$jube_benchmark_home
+          export BENCH_DIR=$jube_benchmark_home
           export CUDA_VISIBLE_DEVICES=0,1,2,3
-          if [ "x$$ROOT_DIR" = "x" ]; then
-              echo "ROOT_DIR is not set. Please set it to the root directory of benchmark" >&2
+          if [ "x$$BENCH_DIR" = "x" ]; then
+              echo "BENCH_DIR is not set. Please set it to the llm_training directory of benchmark" >&2
               exit 1
           fi
-          source $$ROOT_DIR/llm_variables.bash
-          [ "x$$DATA_OUTPUT_PATH" = x ] &&  DATA_OUTPUT_PATH="$$ROOT_OUTPUT_DIR"/"$nlp_model_size"_model/"$$SLURM_JOB_ID"
+          source $$BENCH_DIR/llm_variables.bash
+          [ "x$$DATA_OUTPUT_PATH" = x ] &&  DATA_OUTPUT_PATH="$$BENCH_OUTPUT_DIR"/"$nlp_model_size"_model_"$$SLURM_JOB_ID"
           [ "x$$CHECKPOINT_PATH" = x ] && CHECKPOINT_PATH=$$DATA_OUTPUT_PATH/checkpoints
           [ "x$$TENSORBOARD_PATH" = x ] &&  TENSORBOARD_PATH=$$DATA_OUTPUT_PATH/tensorboard
           [ "x$$LOGS_PATH" = x ] &&  LOGS_PATH=$$DATA_OUTPUT_PATH/logs
           mkdir -p $$LOGS_PATH
 
           OLDDIR=$(pwd)
-          cd "$ROOT_DIR/Megatron-LM" || exit 1
+          cd "$BENCH_DIR/Megatron-LM" || exit 1
 
           rm -f megatron/fused_kernels/build/lock
           CLEAN_PREV_JIT_BUILD=0
@@ -282,23 +307,25 @@ parameterset:
           }
           # Trap out-of-time signal to create the error file
           trap oothandler $ootsignal
+
   - name: executeset
     init_with: platform.xml
     parameter:
       - name: args_starter
         mode: text
-        tag: "Jedi"
+        tag: "Jedi+!container"
         separator: |
         _: |
           --cpu_bind=v --mpi=pmi2 apptainer exec  --bind=${jube_benchmark_home} --nv ${singularity_file}
       - name: args_starter
         mode: text
-        tag: "!Jedi"
+        tag: "!Jedi+!container"
         separator: |
         _: |
           --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home} --nv ${singularity_file}
       - name: args_executable
         mode: text
+        tag: "!container"
         separator: |
         _:  |
           srun --overlap nvidia-smi  --query-gpu=index,timestamp,name,power.draw --format=csv -f ${jube_benchmark_home}/${system_name}_energy_${SLURM_JOB_NAME}_${SLURM_JOB_ID}.csv --loop-ms=1000 
@@ -327,33 +354,54 @@ result:
     use: analyse
     table:
       name: result
-      style: pretty
+      style: csv
       sort: iter_pat
       column: 
-        - {title: "system", _: system_name}
-        - {title: "version", _: system_version}
-        - {title: "queue", _: queue}
         - {title: "JobID", _: jobid}
-        - {title: "Job_Time", _: timelimit}
-        - {title: "Model_Size", _: nlp_model_size}
+        - {title: "System", _: system_name}
+        - {title: "Version", _: system_version}
+        - {title: "Queue", _: queue}
+        - {title: "JobTime", _: timelimit}
+        - {title: "ModelSize", _: nlp_model_size}
         - {title: "Nodes", _: nodes}
-        - {title: "Batch_Size", _: global_batch_size}
-        - {title: "Pipeline_Parallel", _: pp_size}
-        - {title: "Tensor_Parallel", _: tp_size}
+        - {title: "Devices", _: total_devices}
+        - {title: "BatchSize", _: global_batch_size}
+        - {title: "PipelineParallel", _: pp_size}
+        - {title: "TensorParallel", _: tp_size}
         - {title: "Iterations", _: iterations}
         # - {title: "TFLOPs logged", _: tflops_pat_cnt}
-        - {title: "Avg_TFLOPs/GPU", format: ".2f", _: tflops_pat_avg}
+        - {title: "Time/iteration(s)", format: ".2f", _: elp_pat_avg}
         - {title: "Tokens/sec",format: ".2f", _: tokens_per_second}
-        - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
+        - {title: "Avg_TFLOPs/GPU", format: ".2f", _: tflops_pat_avg}
+        
+        # - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
 
 step:
-    - name: get_source
-      export: true
+
+    - name: get_container
+      tag: container+(H100|GH200)
+      use:
+        - systemInfo
+        - systemParameter
+        - executeset
+        - from: platform.xml
+          _: jobfiles
+        - from: platform.xml
+          _: executesub
       do:
-        - export ROOT_DIR=$jube_benchmark_home
-        - bash $ROOT_DIR/setup_llm.sh
-    - name:   benchmark
-      depend: get_source
+        done_file:  $ready_file
+        error_file: $error_file
+        _:          $submit $submit_script     
+
+    - name: setup_llm
+      tag: "!container"
+      do:
+        - export BENCH_DIR=$jube_benchmark_home
+        - bash $BENCH_DIR/setup_llm.sh
+
+    - name: benchmark
+      tag: "!container"
+      depend: setup_llm
       use:
         - systemInfo
         - systemParameter
@@ -366,5 +414,5 @@ step:
       do:
           done_file:  $ready_file
           error_file: $error_file
-          _:         $submit $submit_script
+          _:          $submit $submit_script
 
