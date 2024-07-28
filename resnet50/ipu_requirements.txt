@@ -12,6 +12,7 @@ cppimport==22.8.2
 dill==0.3.6
 docker-pycreds==0.4.0
 docutils==0.16
+examples-utils @ git+https://github.com/graphcore/examples-utils@latest_stable
 execnet==1.9.0
 filelock==3.10.0
 gitdb==4.0.10
@@ -43,7 +44,7 @@ pytest-pythonpath==0.7.4
 pytest-xdist==2.5.0
 python-dateutil==2.9.0.post0
 pytz==2024.1
-PyYAML==6.0
+PyYAML==5.4.1
 rsa==4.7.2
 s3transfer==0.6.0
 sentry-sdk==1.17.0
