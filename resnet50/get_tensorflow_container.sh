@@ -53,8 +53,8 @@ else
     if [ -f $TENSORFLOW_CONTAINER_FILE_GC200 ]; then
         echo "$TENSORFLOW_CONTAINER_FILE_GC200" exists >&2
     else
-        # https://gitlab.jsc.fz-juelich.de/john2/graphcore_tensorflow/container_registry/530
-        apptainer pull $TENSORFLOW_CONTAINER_FILE_GC200 docker: >&2
+        # https://hub.docker.com/layers/john856/caraml/tensorflow_poplar310_tf263_mpi4py/images/sha256-57cb664cb1e3493657c576b07a0d274363e1097e62820d2f7e03db5e68fe1f0e?context=repo
+        apptainer pull $TENSORFLOW_CONTAINER_FILE_GC200 docker://john856/caraml:tensorflow_poplar310_tf263_mpi4py >&2
         echo "Done pulling $TENSORFLOW_CONTAINER_FILE_GC200" >&2
     fi
 fi

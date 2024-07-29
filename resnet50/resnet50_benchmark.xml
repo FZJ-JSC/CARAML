@@ -142,13 +142,7 @@
         "A100": "$root_dir/containers/ngc_2301_tf115_py38_cuda1201_nccl2165.sif",
         <!-- https://hub.docker.com/layers/rocm/tensorflow/rocm5.0-tf2.7-dev/images/sha256-664fbd3e38234f5b4419aa54b2b81664495ed0a9715465678f2bc14ea4b7ae16?context=explore -->
         "MI250": "$root_dir/containers/tensorflow_rocm50_tf27-dev.sif",
-        <!-- https://hub.docker.com/layers/graphcore/tensorflow/2-amd-3.1.0-ubuntu-20.04/images/sha256-332c17c82a9093c69bf2cd7afca2db331b46d0eeb2dc16febfe09ea56c9ebccc?context=explore
-         DockerFile:
-         FROM graphcore/tensorflow:2-amd-3.1.0-ubuntu-20.04-20221218
-         RUN apt-get update -y
-         RUN apt-get install -y git vim
-         RUN apt-get install -y python3-mpi4py
-        -->
+       <!-- https://hub.docker.com/layers/john856/caraml/tensorflow_poplar310_tf263_mpi4py/images/sha256-57cb664cb1e3493657c576b07a0d274363e1097e62820d2f7e03db5e68fe1f0e?context=repo -->
         "GC200": "$root_dir/containers/tensorflow_poplar310_tf263_mpi4py.sif" 
       }["${system_name}"]</parameter>
       <parameter name="total_devices" type="int" separator=";" mode="python">${nodes}*${taskspernode}</parameter>
@@ -175,7 +169,7 @@
       <parameter name="tf_model" tag="GC200">resnet50_mlperf_pod4_bs20</parameter>
       <parameter name="global_batch_size"  type="int"  separator=";">16</parameter>
       <!-- 16;32;64;128;256;512;1024;2048;4096 -->
-      <parameter name="replicas" type="int" separator=";" tag="GC200">1;2;3;4</parameter>
+      <parameter name="replicas" type="int" separator=";" tag="GC200">1</parameter>
       <parameter name="dbn_replica" type="int" separator=";" tag="GC200">${replicas}</parameter>
       <parameter name="batch_size_per_device"  type="int" separator=";" mode="python" tag="!GC200">int(${global_batch_size}/${total_devices})</parameter>
       <parameter name="batch_size_per_device"  type="int" separator=";" mode="python" tag="GC200">int(${global_batch_size}/${replicas})</parameter>
