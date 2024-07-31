@@ -7,6 +7,7 @@
       NVIDIA NVLink-C2C CPU-to-GPU link at 900 GB/s
     Network: 4× InfiniBand NDR200 (Connect-X7)
     TDP: 680 W (for full GH200 superchip)
+    Available: 44 nodes
 
   JURECA-GH200 NVIDIA:
     1× NVIDIA GH200 Grace-Hopper Superchip
@@ -14,6 +15,7 @@
     GPU: 1 × NVIDIA H100
     Memory: 480 GiB LPDDR5X and 96 GiB HBM3
     Network: 1 × NVIDIA ConnectX-7 @ 2 × EDR (200 Gbit/s)
+    Available: 1 chip
 
   JURECA-WAIH100 NVIDIA Node:
     4x NVIDIA H100 Hopper-NVLink
@@ -21,6 +23,7 @@
      A total of 64 computing cores per node Ã 2.8 GHz (Base Freq.)
     Memory: 512 GB DDR5 RAM per node
     GPU: 4x NVIDIA H100 GPUs (incl. NVLink Interconnect);94 GB HBM2e per GPU
+    Available: 16 nodes
 
   JURECA-H100 NVIDIA Node:
     1× NVIDIA H100 Hopper-PCIe
@@ -30,6 +33,7 @@
      including the file system); 256 GB per socket;
     GPU: 4 × NVIDIA H100 PCIe GPUs, each with 80 GB memory;
     Network: 1 × 1x BlueField-2 ConnectX-6 DPU @ EDR (100 Gbit/s)
+    Available: 1 node
 
   JURECA-A100 NVIDIA Node:
     4x NVIDIA A100 Ampere-SXM
@@ -37,6 +41,7 @@
     Memory: 512 (16× 32) GB DDR4, 3200 MHz
     GPU: 4× NVIDIA A100 GPU, 4× 40 GB HBM2e
     Network: 2× InfiniBand HDR (NVIDIA Mellanox Connect-X6)
+    Available: 192 nodes
 
   JURECA-MI200 AMD Node:
     2× AMD MI250
@@ -46,7 +51,8 @@
      including the file system); 256 GB per socket; 8 memory channels per socket (2 channels per NUMA domain)
     GPU: 4 × AMD MI250 GPUs, each with 128 GB memory; the GPUs are built as Multi Chip Modules (MCM) 
      and because of that they are shown as 8 GPUs with 64 GB memory each.
-    Network: 1 × Mellanox HDR InfiniBand ConnectX 6 (100 Gbit/s), HCA (not yet final)
+    Network: 1 × Mellanox HDR InfiniBand ConnectX 6 (100 Gbit/s)
+    Available: 2 nodes
 
   JURECA-M2000 Graphcore Node:
   The IPU-POD4 consists of two parts:
@@ -56,11 +62,12 @@
       Network: 1 × Mellanox EDR InfiniBand ConnectX 5 (100 Gbit/s) to connect to other compute nodes and 1 × Mellanox 100 GigE ConnectX 5 to connect to the IPU-M2000
     Graphcore IPU-M2000 which is connected directly to the access server with
             IPUs: 4 × GC200 IPUs
+    Available: 1 node
 -->
 
 <jube>
-
-  <benchmark name="tensorflow_benchmark" outpath="resnet50_benchmark_run">
+  <!-- resnet50_benchmark_run -->
+  <benchmark name="tensorflow_benchmark" outpath="test_data">
     <parameterset name="systemInfo">
       <!-- <parameter name="system_name" mode="shell">cat /etc/FZJ/systemname |tr -d \"\n\"</parameter>
       <parameter name="systemname" mode="shell">echo $SYSTEMNAME</parameter> -->
@@ -94,10 +101,11 @@
       }["${system_name}"]</parameter>
       <parameter name="taskspernode" type="int" separator=";" tag="!container" mode="python">
       {
-        "Jedi": "1;2;3;4",
+        "Jedi": "4",
         "GH200": "1",
         "WAIH100": "1;2;3;4",
-        "H100": "1;2;3;4" ,
+        "H100": "1" ,
+        <!-- ;2;3;4 -->
         "A100": "1;2;3;4",
         "MI250": "1;2;3;4;5;6;7;8",
         "GC200": "1"
@@ -130,46 +138,50 @@
         "MI250": "dc-mi200",
         "GC200": "dc-ipu"
       }["${system_name}"]</parameter>
-
-      <parameter name="singularity_file" mode="python">
-      { 
-        <!-- https://docs.nvidia.com/deeplearning/frameworks/tensorflow-release-notes/rel-23-01.html -->
-        "Jedi": "$root_dir/containers/ngc_2301_tf115_py38_cuda1201_nccl2165_arm.sif",
-        "GH200": "$root_dir/containers/ngc_2301_tf115_py38_cuda1201_nccl2165_arm.sif",
-        <!-- https://docs.nvidia.com/deeplearning/frameworks/tensorflow-release-notes/rel-23-01.html -->
-        "WAIH100": "$root_dir/containers/ngc_2301_tf115_py38_cuda1201_nccl2165.sif",
-        "H100": "$root_dir/containers/ngc_2301_tf115_py38_cuda1201_nccl2165.sif" ,
-        "A100": "$root_dir/containers/ngc_2301_tf115_py38_cuda1201_nccl2165.sif",
-        <!-- https://hub.docker.com/layers/rocm/tensorflow/rocm5.0-tf2.7-dev/images/sha256-664fbd3e38234f5b4419aa54b2b81664495ed0a9715465678f2bc14ea4b7ae16?context=explore -->
-        "MI250": "$root_dir/containers/tensorflow_rocm50_tf27-dev.sif",
-       <!-- https://hub.docker.com/layers/john856/caraml/tensorflow_poplar310_tf263_mpi4py/images/sha256-57cb664cb1e3493657c576b07a0d274363e1097e62820d2f7e03db5e68fe1f0e?context=repo -->
-        "GC200": "$root_dir/containers/tensorflow_poplar310_tf263_mpi4py.sif" 
-      }["${system_name}"]</parameter>
-      <parameter name="total_devices" type="int" separator=";" mode="python">${nodes}*${taskspernode}</parameter>
-      <!-- When using Horovod ntasks=hvd_size=num_workers; there can be only one gpu per worker; hence num_gpus=1 -->
-      <parameter name="gpus" type="int" separator=";">1</parameter>
+      <parameter name="account" tag="!WAIH100">zam</parameter>
+      <parameter name="account" tag="WAIH100">westai0005</parameter>
       <parameter name="timelimit" tag="!GC100+!container">00:20:00</parameter>
       <parameter name="timelimit" tag="GC100+!container">01:20:00</parameter>
       <parameter name="timelimit" tag="container+(H100|GH200|MI250|GC200)">01:20:00</parameter>
+      <parameter name="total_devices" type="int" separator=";" mode="python">${nodes}*${taskspernode}</parameter>
+      <!-- When using Horovod ntasks=hvd_size=num_workers; there can be only one gpu per worker; hence num_gpus=1 -->
+      <parameter name="gpus" type="int" separator=";">1</parameter>
+      <parameter name="singularity_file" mode="python">
+      { 
+        <!-- https://docs.nvidia.com/deeplearning/frameworks/tensorflow-release-notes/rel-23-01.html -->
+        "Jedi": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38_arm.sif",
+        "GH200": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38_arm.sif",
+        <!-- https://docs.nvidia.com/deeplearning/frameworks/tensorflow-release-notes/rel-23-01.html -->
+        "WAIH100": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38.sif",
+        "H100": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38.sif" ,
+        "A100": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38.sif",
+        <!-- https://hub.docker.com/layers/rocm/tensorflow/rocm5.0-tf2.7-dev/images/sha256-664fbd3e38234f5b4419aa54b2b81664495ed0a9715465678f2bc14ea4b7ae16?context=explore -->
+        "MI250": "$root_dir/containers/amd_tf27_rocm50_py39-dev.sif",
+       <!-- https://hub.docker.com/layers/john856/caraml/tensorflow_poplar310_tf263_mpi4py/images/sha256-57cb664cb1e3493657c576b07a0d274363e1097e62820d2f7e03db5e68fe1f0e?context=repo -->
+        "GC200": "$root_dir/containers/ipu_tf263_poplar310_py38.sif" 
+      }["${system_name}"]</parameter>
       <parameter name="executable" tag="!GC200+!container">python ${folder}/tf_cnn_benchmarks.py</parameter>
       <parameter name="executable" tag="GC200+!container">python3 ${folder}/train.py</parameter>
       <parameter name="executable" tag="container+(H100|GH200|MI250|GC200)">bash ${jube_benchmark_home}/get_tensorflow_container.sh</parameter>
-      <parameter name="account" tag="!WAIH100">zam</parameter>
-      <parameter name="account" tag="WAIH100">westai0005</parameter>
-      <!--Replace with path to ImageNet data -->
-      <parameter name="data_dir">/p/project1/cjsc/benchmark/imagenet-processed/</parameter>
-      <parameter name="root_dir">$jube_benchmark_home/..</parameter>
-      <parameter name="args_exec" separator="!" tag="GC200+!container"> --config=${tf_model} --dataset-path=${data_dir} --validation=false  --mlperf-logging --num-replicas=${replicas} --num-epochs=1 --global-batch-size=${global_batch_size} --micro-batch-size=${ipu_mbs} --dbn-replica-group-size=${dbn_replica}</parameter>
-      <parameter name="args_exec" separator="!" tag="!GC200+!container">--num_gpus $gpus --model $tf_model --batch_size ${batch_size_per_device} --data_dir=${data_dir} --variable_update horovod --use_fp16=True</parameter>
+      <parameter name="args_exec" separator="!" tag="GC200+!container"> ${data_arg} --config=${tf_model}  --validation=false  --mlperf-logging --num-replicas=${replicas} --num-epochs=1 --global-batch-size=${global_batch_size} --micro-batch-size=${ipu_mbs} --dbn-replica-group-size=${dbn_replica}</parameter>
+      <parameter name="args_exec" separator="!" tag="!GC200+!container+!synthetic">--num_gpus $gpus --model $tf_model --batch_size ${batch_size_per_device} --data_dir=${data_dir} --variable_update horovod --use_fp16=True</parameter>
+      <parameter name="args_exec" separator="!" tag="!GC200+!container+synthetic">--num_gpus $gpus --model $tf_model --batch_size ${batch_size_per_device} --variable_update horovod --use_fp16=True</parameter>
       <parameter name="measurement" separator="!">${load_modules}; time -p</parameter>
     </parameterset>
 
     <parameterset name="modelParameter">
       <parameter name="tf_model" tag="!GC200">resnet50_v2</parameter>
       <parameter name="tf_model" tag="GC200">resnet50_mlperf_pod4_bs20</parameter>
-      <parameter name="global_batch_size"  type="int"  separator=";">16</parameter>
+      <!-- 1;2;3;4 -->
+      <parameter name="replicas" type="int" separator=";" tag="GC200">4</parameter>
+      <!--Replace with path to ImageNet data -->
+      <parameter name="data_dir">/p/project1/cjsc/benchmark/imagenet-processed/</parameter>
+      <parameter name="data_arg" tag="GC200+!synthetic">--dataset-path=${data_dir}</parameter>
+      <parameter name="data_arg" tag="GC200+synthetic">--synthetic-data=ipu</parameter>
+      <parameter name="dataset" tag="synthetic">ImageNet(synthetic)</parameter>
+       <parameter name="dataset" tag="!synthetic">ImageNet</parameter>
+      <parameter name="global_batch_size"  type="int"  separator=";">2048</parameter>
       <!-- 16;32;64;128;256;512;1024;2048;4096 -->
-      <parameter name="replicas" type="int" separator=";" tag="GC200">1</parameter>
       <parameter name="dbn_replica" type="int" separator=";" tag="GC200">${replicas}</parameter>
       <parameter name="batch_size_per_device"  type="int" separator=";" mode="python" tag="!GC200">int(${global_batch_size}/${total_devices})</parameter>
       <parameter name="batch_size_per_device"  type="int" separator=";" mode="python" tag="GC200">int(${global_batch_size}/${replicas})</parameter>
@@ -179,12 +191,17 @@
     </parameterset>
 
     <parameterset name="environment">
+      <parameter name="root_dir">$jube_benchmark_home/..</parameter>
+      <parameter name="ipu_log_flag" separator="!">export POPLAR_LOG_LEVEL=INFO;export POPART_LOG_LEVEL=INFO</parameter>
+      <parameter name="ipu_cache_path"  seperator="!">export TF_POPLAR_FLAGS='--executable_cache_path=$jube_benchmark_home/ipu_cache'</parameter>
+      <parameter name="python_path">export PYTHONPATH=${packages}:$PYTHONPATH</parameter>
+      <parameter name="bench_path">export BENCH_DIR=${jube_benchmark_home}</parameter>
+      <parameter name="data_path">export DATASETS_DIR=${data_dir}</parameter>
       <parameter name="mpi_modules">GCC OpenMPI</parameter>
       <parameter name="accelerator">export ACCELERATOR=$system_name</parameter>
       <parameter name="cuda_devices" separator="!">export CUDA_VISIBLE_DEVICES=0,1,2,3</parameter>
       <parameter name="rocm_devices" separator="!">export ROCM_VISIBLE_DEVICES=0,1,2,3,4,5,6,7</parameter>
-      <parameter name="ipu_log_flag" separator="!">export POPLAR_LOG_LEVEL=INFO;export POPART_LOG_LEVEL=INFO</parameter>
-      <parameter name="ipu_cache_path"  seperator="!">export TF_POPLAR_FLAGS='--executable_cache_path=$jube_benchmark_home/ipu_cache'</parameter>
+      <parameter name="xla" separator="!">export TF_XLA_FLAGS='--tf_xla_auto_jit=2'</parameter>
       <parameter name="packages" separator="!" mode="python">
       {
         "Jedi": "",
@@ -193,14 +210,10 @@
         "H100": "" ,
         "A100": "",
         <!-- amd_requirements.txt -->
-        "MI250": "$jube_benchmark_home/amd_packages/lib/python3.9/site-packages",
+        "MI250": "$jube_benchmark_home/amd_tensorflow_packages/lib/python3.9/site-packages",
         <!-- ipu_requirements.txt -->
-        "GC200": "$jube_benchmark_home/ipu_packages/lib/python3.8/site-packages"
+        "GC200": "$jube_benchmark_home/ipu_tensorflow_packages/lib/python3.8/site-packages"
       }["${system_name}"]</parameter>
-      <parameter name="python_path">export PYTHONPATH=${packages}:$PYTHONPATH</parameter>
-      <parameter name="bench_path">export BENCH_DIR=${jube_benchmark_home}</parameter>
-      <parameter name="xla" separator="!">export TF_XLA_FLAGS='--tf_xla_auto_jit=2'</parameter>
-      <parameter name="data_path">export DATASETS_DIR=${data_dir}</parameter>
       <parameter name="load_modules" separator="!" tag="!container" mode="python">
       {
         "Jedi":    "${cuda_devices};${accelerator}; ${bench_path}",
@@ -231,7 +244,7 @@
         "H100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} --nv ${singularity_file}" ,
         "A100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} --nv ${singularity_file} ",
         "MI250": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} ${singularity_file}",
-        "GC200": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} ${singularity_file} ${jube_benchmark_home}/ipu_wrap.sh"
+        "GC200": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} ${singularity_file} ${jube_benchmark_home}/ipu_tensorflow_wrap.sh"
       }["${system_name}"]</parameter>
     </parameterset>
 
@@ -246,21 +259,23 @@
     
 
     <step name="pull_container" tag="container+(H100|GH200|MI250|GC200)">
-     <use>systemInfo</use>
-     <use>systemParameter</use>
-     <use>environment</use>
-     <use>executeset</use>
-     <use from="platform.xml">jobfiles</use>
-     <use from="platform.xml">executesub</use>
-     <do>$submit $submit_script</do>
-     <do done_file="$done_file"></do>
+      <use>systemInfo</use>
+      <use>systemParameter</use>
+      <use>environment</use>
+      <use>executeset</use>
+      <use from="platform.xml">jobfiles</use>
+      <use from="platform.xml">executesub</use>
+      <do>$submit $submit_script</do>
+      <do done_file="$done_file"></do>
     </step>
 
     <step name="wrap" tag="!container">
       <use>systemInfo</use>
       <use>systemParameter</use>
       <use>environment</use>
-      <do  mode="shell" tag="GC200">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/ipu_wrap.sh</do>
+      <do  mode="shell" tag="GC200+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/ipu_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="GC200+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/ipu_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="GC200"> chmod u+rwx ${jube_benchmark_home}/ipu_tensorflow_wrap.sh </do>
     </step>
 
     <step name="execute" tag="!container" depend="wrap" iterations="1">
@@ -287,6 +302,7 @@
       [ time_to_report_in_seconds ]  = [epochs] * [images] / [throughput in images/second] -->
       <pattern name="throughput_in_time" type="float" mode="python" unit="s">(90 * 1281167 /$imagespersec)</pattern>
       <pattern name="energy" unit="Wh" tag="GC200">integrated:\s*\[\s*(\d+(\.\d+)?)(?=,)</pattern>
+      <!-- to-do: add energy -->
     </patternset>
 
     <patternset name="jobnumber">
@@ -294,7 +310,7 @@
     </patternset>
 
     <patternset name="runtimepattern">
-      <pattern name="runtime" type="float" unit="s">real $jube_pat_fp</pattern>
+      <pattern name="runtime" type="float">real $jube_pat_fp</pattern>
       <pattern name="error_code" type="int">JUBE_ERR_CODE=$jube_pat_int</pattern>
     </patternset>
 
@@ -315,8 +331,9 @@
         <column title="System">system_name</column>
         <column title="Version">system_version</column>
         <column title="Queue">queue</column>
-        <column title="Runtime">runtime</column>
+        <column title="Runtime(s)">runtime</column>
         <column title="Model">tf_model</column>
+        <column title="Dataset">dataset</column>
         <column title="Nodes">nodes</column>
         <column title="Devices">total_devices</column>
         <column title="Tasks/Node">taskspernode</column>
@@ -334,8 +351,9 @@
         <column title="System">system_name</column>
         <column title="Version">system_version</column>
         <column title="Queue">queue</column>
-        <column title="Runtime">runtime</column>
+        <column title="Runtime(s)">runtime</column>
         <column title="Model">tf_model</column>
+        <column title="Dataset">dataset</column>
         <column title="Nodes">nodes</column>
         <column title="Devices">total_devices</column>
         <column title="Tasks/Node">taskspernode</column>

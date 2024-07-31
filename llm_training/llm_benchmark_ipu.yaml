@@ -1,0 +1,293 @@
+name:    llm-ipu
+outpath: llm_benchmark_ipu_run
+comment: llm benchmark jube script for IPU-GC200
+# GPT-2 benchmark for 
+  # JURECA-M2000 Graphcore Node:
+  # The IPU-POD4 consists of two parts:
+  #   AMD EPYC based access server on which user applications are launched with
+  #     CPU: AMD EPYC 7413 (Milan); 2 sockets, 24 cores per socket, SMT-2 (total: 2×24×2 = 96 threads) in NPS-4 1 configuration (details for AMD EPYC 7413 on WikiChip)
+  #     Memory: 512 GiB DDR4-3200 RAM (of which at least 20 GB is taken by the system software stack, including the file system); 256 GB per socket; 8 memory channels per socket (2 channels per NUMA domain)
+  #     Network: 1 × Mellanox EDR InfiniBand ConnectX 5 (100 Gbit/s) to connect to other compute nodes and 1 × Mellanox 100 GigE ConnectX 5 to connect to the IPU-M2000
+  #   Graphcore IPU-M2000 which is connected directly to the access server with
+  #           IPUs: 4 × GC200 IPUs
+  #   Available: 1 node
+
+parameterset:
+  - name: systemInfo
+    parameter:
+      - {name: system_name,        type: str,     _: "GC200"}
+      - {name: system_version,    mode: shell,    _: "echo 2024.01"}
+
+  - name: modelParameter
+    parameter:
+      - {name: llm_model_size,           type: str,  tag: "117M", _: "117M"}
+      - {name: modelidx,                 type: int, mode: python, _: "{'117M': '0'}['$llm_model_size']"}
+      - {name: model_type,               type: str,               _: "GPT"}
+      - {name: model,                    type: str,               _: "gpt2"}
+      - {name: nhidden,                  type: int, mode: python, _: "[768][$modelidx]"}
+      - {name: nlayers,                  type: int, mode: python, _: "[12][$modelidx]"}
+      - {name: nheads,                   type: int, mode: python, _: "[12][$modelidx]"}
+      - {name: dataset,                  type: str, tag: "!synthetic", _: "OSCAR"}
+      - {name: dataset,                  type: str, tag: "synthetic",  _: "Synthetic"}
+      - {name: dataformat,               type: str, tag: "!synthetic", _: "'mmap'"}
+      - {name: dataformat,               type: str, tag: "synthetic", _: "'generated'"}
+      - {name: datadir,                  type: str, tag: "!synthetic", _: "$jube_benchmark_home/llm_data/oscar_text_document"}
+      - {name: replication_fact,         type: int, seperator: ",", _: "1"}
+      - {name: ipus_per_replica,         type: int, seperator: ",", _: "4"}
+      - {name: layers_per_ipu,           type: str, seperator: ",", _: "0 4 4 4"}
+      - {name: matmul_prop,              type: str, seperator: ",", _: "0.15 0.15 0.15 0.15"}
+      - {name: device_iter,              type: int, seperator: ",", _: "4"}
+      - {name: embedding_serial_fact,    type: int, seperator: ",", _: "4"}
+      - {name: total_devices,    type: int, mode: python, _: "${replication_fact}*${ipus_per_replica}"}
+      - {name: batch_size,               type: int, seperator: ",", _: "1"}
+      # 16,32,64,128,256,512,1024,2048,4096
+      - {name: gas,                      type: int, seperator: ",", _: "16"}
+      - {name: global_batch_size,        type: int, mode: python, 
+         _: "int($batch_size*$gas*$replication_fact)"}
+      - {name: sequence_length,           type: int,                _: 1024}
+      - name: optimizerargs
+        mode: text
+        _: >
+          --optimizer AdamW 
+          --learning-rate 0.00015 
+          --lr-schedule cosine 
+          --lr-warmup 0.01 
+      - name: parallelargs
+        _: >
+          --replication-factor ${replication_fact}
+          --ipus-per-replica ${ipus_per_replica} 
+          --layers-per-ipu ${layers_per_ipu}
+          --matmul-proportion ${matmul_prop} 
+          --device-iterations ${device_iter} 
+          --embedding-serialization-factor ${embedding_serial_fact}
+          --replicated-tensor-sharding True 
+          --recompute-checkpoint-every-layer True 
+          --remap-logit True 
+          --enable-sequence-serialized True
+      - name: dataargs
+        tag: "synthetic"
+        _: >
+          --dataset ${dataformat}
+      - name: dataargs
+        tag: "!synthetic"
+        _: >
+          --dataset ${dataformat}
+          --input-files ${datadir}
+      - name: modelargs
+        _: >
+          --model ${model}
+          --epochs 1
+          $dataargs
+          --batch-size ${batch_size}
+          --gradient-accumulation ${gas}
+          --max-len ${sequence_length}
+          --enable-half-partials True 
+          $parallelargs
+          $optimizerargs
+      - name: args_executable
+        mode: text
+        tag: "!container"
+        separator: |
+        _:  $modelargs
+
+  - name: systemParameter
+    init_with: platform.xml
+    parameter:    
+      - {name: account,                   _: "zam"}
+      - {name: queue,                     _: "dc-ipu"}
+      - {name: nodes,            type: int,    _: 1}
+      - {name: gpus_per_node,    type: int, tag: "!container", _: 4}
+      - {name: gpus_per_node,    type: int, tag: "container", _: 1}
+      - {name: taskspernode,     type: int,                _: 1}
+      - {name: tasks,            type: int, mode: python,  _: "$taskspernode*$nodes"}
+      - {name: threadspertask,   type: int, mode: python, tag: "!container" ,_: 12}
+      - {name: threadspertask,  type: int, mode: python, tag:  "container", _: 4}
+      - {name: timelimit,        tag: "container",         _: "01:30:00"}
+      - {name: timelimit,        tag: "!container",         _: "00:40:00"}
+      - {name: hint,                                      _: "nomultithread"}
+      - {name: outlogfile,                                _: "job.out"}
+      - {name: outerrfile,                                _: "job.err"}
+      - {name: ready_file,                _: "ready"}
+      - {name: error_file,                _: "error"}
+      - {name: root_dir,            type: str,               _: "$jube_benchmark_home/.."}
+      # https://hub.docker.com/layers/graphcore/pytorch/3.3.0-ubuntu-20.04-20230703/images/sha256-7f65b5ff5bdc2dad3c112e45e380dc2549113d3eec181d4cf04df6a006cd42a4?context=explore
+      # pytorch:3.3.0-ubuntu-20.04-20230703
+      - {name: singularity_file, type: str,
+         _: "$root_dir/containers/ipu_pytorch20_poplar33_py38.sif"}
+      - name: variable_export
+        mode: shell
+        separator: "!"
+        _: |
+           echo "export BENCH_DIR=${jube_benchmark_home}"
+           echo "export ACCELERATOR=${system_name}"
+      - {name: measurement,  _: $variable_export}
+      - name: container_env
+        mode: text
+        separator: "!"
+        _: |
+          POPLAR_ROOT=\$(cd \"\$( dirname \"\${BASH_SOURCE[0]}\" )\" && pwd)
+          export CMAKE_PREFIX_PATH=\${POPLAR_ROOT}\${CMAKE_PREFIX_PATH:+:\${CMAKE_PREFIX_PATH}}
+          export PATH=\${POPLAR_ROOT}/bin\${PATH:+:\${PATH}}
+          export CPATH=\${POPLAR_ROOT}/include\${CPATH:+:\${CPATH}}
+          export LIBRARY_PATH=\${POPLAR_ROOT}/lib\${LIBRARY_PATH:+:\${LIBRARY_PATH}}
+          export LD_LIBRARY_PATH=\${POPLAR_ROOT}/lib\${LD_LIBRARY_PATH:+:\${LD_LIBRARY_PATH}}
+          export OPAL_PREFIX=\${POPLAR_ROOT}
+          export PYTHONPATH=\${POPLAR_ROOT}/python:\${POPLAR_ROOT}/lib/python\${PYTHONPATH:+:\${PYTHONPATH}}
+          export POPLAR_SDK_ENABLED=\${POPLAR_ROOT}
+          POPART_ROOT=\$(cd \"\$( dirname \"\${BASH_SOURCE[0]}\" )\" && pwd)
+          export CMAKE_PREFIX_PATH=\${POPART_ROOT}\${CMAKE_PREFIX_PATH:+:\${CMAKE_PREFIX_PATH}}
+          export CPATH=\${POPART_ROOT}/include\${CPATH:+:\${CPATH}}
+          export LIBRARY_PATH=\${POPART_ROOT}/lib\${LIBRARY_PATH:+:\${LIBRARY_PATH}}
+          export LD_LIBRARY_PATH=\${POPART_ROOT}/lib\${LD_LIBRARY_PATH:+:\${LD_LIBRARY_PATH}}
+          export PYTHONPATH=\${POPART_ROOT}/python:\$PYTHONPATH
+      - {name: packages,     _: $jube_benchmark_home/ipu_torch_packages/lib/python3.8/site-packages}
+      - name: executable
+        separator: ";"
+        tag: "!container"
+        _:
+          python3 ${folder}/train_gpt2.py $args_executable
+      - name: executable
+        separator: "!"
+        tag: "container"
+        _: 
+          bash  ${jube_benchmark_home}/get_pytorch_container.sh
+      - name: preprocess
+        mode: text
+        tag: "!container"
+        update_mode: step
+        separator: |
+        _: |
+          echo "START TIME: $(date)"
+          echo "Submitted batch job $${SLURM_JOBID}"
+          export SRUN_CPUS_PER_TASK=$${SLURM_CPUS_PER_TASK}
+          export BENCH_DIR=$jube_benchmark_home
+          mkdir -p $jube_benchmark_home/ipu_gc200_cache
+          if [ "x$$BENCH_DIR" = "x" ]; then
+              echo "BENCH_DIR is not set. Please set it to the llm_training directory of benchmark" >&2
+              exit 1
+          fi
+         
+          export POPLAR_LOG_LEVEL=INFO
+          export POPART_LOG_LEVEL=INFO
+          export TF_POPLAR_FLAGS='--executable_cache_path=$jube_benchmark_home/ipu_gc200_cache'
+  
+  - name: executeset
+    init_with: platform.xml
+    parameter:
+      - name: folder
+        _: $jube_benchmark_home/$jube_wp_relpath/graphcore_benchmarks/nlp/gpt2/pytorch
+      - name: args_starter
+        mode: text
+        tag: "!container"
+        separator: |
+        _: |
+          --cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home}  ${singularity_file} ${jube_benchmark_home}/ipu_torch_wrap.sh
+  
+
+fileset:
+   - name: files
+     prepare: git clone -b master --recursive https://github.com/chelseajohn/examples.git graphcore_benchmarks
+
+patternset:
+   - name: perf_patterns
+     pattern:
+      - {name: jobid, type: int, _: "Submitted batch job $jube_pat_int" }
+      # https://github.com/graphcore/examples/blob/3cc8f81f13728dd8c17d0d3c8d2fc1549b159485/nlp/gpt2/pytorch/train_gpt2.py#L271
+      - {name: step_time, type: float,  _: "step_time: ${jube_pat_fp}"}
+      - {name: step_throughput, type: float,  _: "throughput: ${jube_pat_fp}"}
+      - {name: tokens_per_second, type: float, mode: python, _: "(1.0/$step_time_last)*$global_batch_size*$device_iter"}
+      - {name: throughput_in_time, type: float, mode: python, _: "(20000000/$tokens_per_second)"}
+      # to-do add energy
+
+analyser:
+    name: analyse
+    reduce: false
+    use: perf_patterns
+    analyse:
+        step: benchmark
+        file: job.err
+
+result:
+    use: analyse
+    table:
+      name: result
+      style: csv
+      sort: iter_pat
+      column: 
+        - {title: "JobID", _: jobid}
+        - {title: "System", _: system_name}
+        - {title: "Version", _: system_version}
+        - {title: "Queue", _: queue}
+        - {title: "JobTime", _: timelimit}
+        - {title: "Model", _: model_type}
+        - {title: "ModelSize", _: llm_model_size}
+        - {title: "Dataset", _: dataset}
+        - {title: "Nodes", _: nodes}
+        - {title: "Devices", _: total_devices}
+        - {title: "DataParallel", _: replication_fact}
+        - {title: "IPU/replica",  _: ipus_per_replica}
+        - {title: "GlobalBatchSize", _: global_batch_size}
+        - {title: "Time/iteration(s)", format: ".2f", _: step_time_last}
+        - {title: "StepThroughput(tokens/s)",format: ".2f", _: step_throughput_last}
+        - {title: "Tokens/second",format: ".2f", _: tokens_per_second} 
+        # - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
+
+step:
+    - name: wrap
+      tag: "!container"
+      use:
+        - systemInfo
+        - systemParameter
+        - modelParameter
+      do:
+        mode: shell
+        _: |
+          printf "%s\n" '#!/bin/bash' "${container_env}" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/ipu_torch_wrap.sh
+          chmod u+rwx ${jube_benchmark_home}/ipu_torch_wrap.sh
+  
+    - name: wrap
+      tag: container
+      use:
+        - systemInfo
+        - systemParameter
+      do:
+        mode: shell
+        _: |
+          printf "%s\n" '#!/bin/bash' "${container_env}" "\$*" > ${jube_benchmark_home}/ipu_torch_wrap.sh
+          chmod u+rwx ${jube_benchmark_home}/ipu_torch_wrap.sh
+
+    - name: get_container
+      tag: "container"
+      depend: wrap
+      use:
+        - systemInfo
+        - systemParameter
+        - executeset
+        - from: platform.xml
+          _: jobfiles
+        - from: platform.xml
+          _: executesub
+      do:
+        done_file:  $ready_file
+        error_file: $error_file
+        _:          $submit $submit_script     
+
+
+    - name: benchmark
+      tag: "!container"
+      depend: wrap
+      use:
+        - files
+        - systemInfo
+        - systemParameter
+        - modelParameter
+        - executeset
+        - from: platform.xml
+          _: jobfiles
+        - from: platform.xml
+          _: executesub
+      do:
+          done_file:  $ready_file
+          error_file: $error_file
+          _:          $submit $submit_script
+

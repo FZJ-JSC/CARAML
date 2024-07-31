@@ -1,44 +1,50 @@
-name:    llm-all
+name:    llm-nvidia
 outpath: llm_benchmark_nvidia_run
-comment: llm benchmark jube script
+comment: llm benchmark jube script for NVIDIA-A100,H100,GH200
 # Megatron-LM benchmark for 
-  # JEDI-GH200 NVIDIA Node:
-  #     4× NVIDIA GH200 Grace-Hopper Superchip 
-  #     CPU: NVIDIA Grace (Arm Neoverse-V2), 72 cores at 3.1 GHz base frequency; 120 GB LPDDR5X memory at 512 GB/s (8532 MHz)
-  #     GPU: NVIDIA Hopper H100, 132 multiprocessors, 96 GB HBM3 memory at 4 TB/s
-  #       NVIDIA NVLink-C2C CPU-to-GPU link at 900 GB/s
-  #     Network: 4× InfiniBand NDR200 (Connect-X7)
-  #     TDP: 680 W (for full GH200 superchip)
+  #   JEDI-GH200 NVIDIA Node:
+  #   4× NVIDIA GH200 Grace-Hopper Superchip 
+  #   CPU: NVIDIA Grace (Arm Neoverse-V2), 72 cores at 3.1 GHz base frequency; 120 GB LPDDR5X memory at 512 GB/s (8532 MHz)
+  #   GPU: NVIDIA Hopper H100, 132 multiprocessors, 96 GB HBM3 memory at 4 TB/s
+  #     NVIDIA NVLink-C2C CPU-to-GPU link at 900 GB/s
+  #   Network: 4× InfiniBand NDR200 (Connect-X7)
+  #   TDP: 680 W (for full GH200 superchip)
+  #   Available: 44 nodes
 
   # JURECA-GH200 NVIDIA:
-  #     1× NVIDIA GH200 Grace-Hopper Superchip
-  #     CPU: 1 × NVIDIA Grace, 72 cores
-  #     GPU: 1 × NVIDIA H100
-  #     Memory: 480 GiB LPDDR5X and 96 GiB HBM3
-  #     Network: 1 × NVIDIA ConnectX-7 @ 2 × EDR (200 Gbit/s)
+  #   1× NVIDIA GH200 Grace-Hopper Superchip
+  #   CPU: 1 × NVIDIA Grace, 72 cores
+  #   GPU: 1 × NVIDIA H100
+  #   Memory: 480 GiB LPDDR5X and 96 GiB HBM3
+  #   Network: 1 × NVIDIA ConnectX-7 @ 2 × EDR (200 Gbit/s)
+  #   Available: 1 chip
 
   # JURECA-WAIH100 NVIDIA Node:
-  #     4x NVIDIA H100 Hopper-NVLink
-  #     CPU: 2x Intel Xeon Platinum 8462Y (Sapphire Rapids) CPUs
-  #      A total of 64 computing cores per node Ã 2.8 GHz (Base Freq.)
-  #     Memory: 512 GB DDR5 RAM per node
-  #     GPU: 4x NVIDIA H100 GPUs (incl. NVLink Interconnect);94 GB HBM2e per GPU
+  #   4x NVIDIA H100 Hopper-NVLink
+  #   CPU: 2x Intel Xeon Platinum 8462Y (Sapphire Rapids) CPUs
+  #    A total of 64 computing cores per node Ã 2.8 GHz (Base Freq.)
+  #   Memory: 512 GB DDR5 RAM per node
+  #   GPU: 4x NVIDIA H100 GPUs (incl. NVLink Interconnect);94 GB HBM2e per GPU
+  #   Available: 16 nodes
 
   # JURECA-H100 NVIDIA Node:
-  #     1× NVIDIA H100 Hopper-PCIe
-  #     CPU: Intel Xeon Platinum Sapphire Rapid 8452Y processor; 2 sockets, 36 cores per socket,\
-  #      SMT-2 (total: 2×36×2 = 144 threads) (details for Intel Xeon Platinum 8452Y on Intel ARK)
-  #     Memory: 512 GiB DDR5-4800 RAM (of which at least 20 GB is taken by the system software stack,\
-  #      including the file system); 256 GB per socket;
-  #     GPU: 4 × NVIDIA H100 PCIe GPUs, each with 80 GB memory;
-  #     Network: 1 × 1x BlueField-2 ConnectX-6 DPU @ EDR (100 Gbit/s)
+  #   1× NVIDIA H100 Hopper-PCIe
+  #   CPU: Intel Xeon Platinum Sapphire Rapid 8452Y processor; 2 sockets, 36 cores per socket,\
+  #    SMT-2 (total: 2×36×2 = 144 threads) (details for Intel Xeon Platinum 8452Y on Intel ARK)
+  #   Memory: 512 GiB DDR5-4800 RAM (of which at least 20 GB is taken by the system software stack,\
+  #    including the file system); 256 GB per socket;
+  #   GPU: 4 × NVIDIA H100 PCIe GPUs, each with 80 GB memory;
+  #   Network: 1 × 1x BlueField-2 ConnectX-6 DPU @ EDR (100 Gbit/s)
+  #   Available: 1 node
 
   # JURECA-A100 NVIDIA Node:
-  #     4x NVIDIA A100 Ampere-SXM
-  #     CPU: 2× AMD EPYC 7742, 2× 64 cores, 2.25 GHz
-  #     Memory: 512 (16× 32) GB DDR4, 3200 MHz
-  #     GPU: 4× NVIDIA A100 GPU, 4× 40 GB HBM2e
-  #     Network: 2× InfiniBand HDR (NVIDIA Mellanox Connect-X6)
+  #   4x NVIDIA A100 Ampere-SXM
+  #   CPU: 2× AMD EPYC 7742, 2× 64 cores, 2.25 GHz
+  #   Memory: 512 (16× 32) GB DDR4, 3200 MHz
+  #   GPU: 4× NVIDIA A100 GPU, 4× 40 GB HBM2e
+  #   Network: 2× InfiniBand HDR (NVIDIA Mellanox Connect-X6)
+  #   Available: 192 nodes
+
 parameterset:
   - name: systemInfo
     parameter:
@@ -51,25 +57,28 @@ parameterset:
 
   - name: modelParameter
     parameter:
-      - {name: modelidx,          type: int, mode: python, _: "{'800M': '0', '13B': '1', '175B': '2'}['$nlp_model_size']"}
+      - {name: llm_model_size,   type: str, tag: "800M",   _: "800M"}
+      - {name: llm_model_size,   type: str, tag: "13B",    _: "13B"}
+      - {name: llm_model_size,   type: str, tag: "175B",   _: "175B"}
+      - {name: model_type,        type: str,               _: "GPT"}
+      - {name: modelidx,          type: int, mode: python, _: "{'800M': '0', '13B': '1', '175B': '2'}['$llm_model_size']"}
+      - {name: nhidden,           type: int, mode: python, _: "[2048,5120,12288][$modelidx]"}
+      - {name: nlayers,           type: int, mode: python, _: "[16,40,96][$modelidx]"}
+      - {name: nheads,            type: int, mode: python, _: "[8,32,96][$modelidx]"}
       # tp_size is preferred to be <=gpus_per node, to limit communication overhead
       - {name: tp_size,           type: int, mode: python, _: "[1,2,8][$modelidx]"}
       # pp_size must be a divisor of nlayers
       - {name: pp_size,           type: int, mode: python, _: "[1,2,8][$modelidx]"}
+      - {name: dp_size,           type: int, mode: python, _: "int( $total_devices / ($pp_size * $tp_size))"}
+      - {name: dataset,           type: str,               _: "OSCAR"}
+      - {name: total_devices,            type: int, mode: python, update_mode: step, _: "$gpus_per_node*$nodes"}
       - {name: micro_batch_size,  type: int, mode: python, _: "[4,2,2][$modelidx]"}
       - {name: gas,               type: int, mode: python, _: "[1,64,64][$modelidx]"}
-      - {name: nhidden,           type: int, mode: python, _: "[2048,5120,12288][$modelidx]"}
-      - {name: nlayers,           type: int, mode: python, _: "[16,40,96][$modelidx]"}
-      - {name: nheads,            type: int, mode: python, _: "[8,32,96][$modelidx]"}
       # global_batch_size has to be divisible by dp_size*micro_batch_size*gas; 
       - {name: global_batch_size, type: int, tag: "800M+!container", seperator: ",", _: "2048"}
       #16,32,64,128,256,512,1024,2048,4096
       - {name: global_batch_size, type: int, tag: "!800M", mode: python, 
-         _: "int(($nodes * $gpus_per_node) / ($pp_size * $tp_size) * $micro_batch_size * $gas)"}
-      - {name: root_dir,            type: str,               _: "$jube_benchmark_home/.."}
-      - {name: nlp_model_size,   type: str, tag: "800M",   _: "800M"}
-      - {name: nlp_model_size,   type: str, tag: "13B",    _: "13B"}
-      - {name: nlp_model_size,   type: str, tag: "175B",   _: "175B"}
+         _: "int( $dp_size * $micro_batch_size * $gas)"}
       - {name: sequence_length,  type: int,                _: 2048}
       - {name: modelargs,             tag: "800M",  mode: text,        _: --fp16}
       - {name: modelargs,             tag: "13B",  mode: text,        _: --ffn-hidden-size 20480 --fp16}
@@ -127,6 +136,46 @@ parameterset:
           --log-timers-to-tensorboard
           --log-batch-size-to-tensorboard
           --log-validation-ppl-to-tensorboard 
+
+  - name: systemParameter
+    init_with: platform.xml
+    parameter:
+      - {name: account,         tag: "!WAIH100",          _: "zam"}
+      - {name: account,         tag: "WAIH100",           _: "westai0005"}
+      - {name: queue,           mode: python,             
+       _: "{'Jedi': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-wai','H100': 'dc-h100' ,'A100': 'dc-gpu'}['${system_name}']"}
+      - {name: nodes,            type: int, tag: "container",   _: 1}
+      - {name: nodes,            type: int, tag: "800M",   _: 1}
+      - {name: nodes,            type: int, tag: "13B",    _: 44}
+      - {name: nodes,            type: int, tag: "175B",   _: 16}
+      - {name: gpus_per_node,    type: int, tag: "!GH200+!container", _: 4}
+      - {name: gpus_per_node,    type: int, tag: "H100+container", _: 1}
+      - {name: gpus_per_node,    type: int, tag: "GH200",  _: 1}
+      - {name: gres,                                      _: "gpu:$gpus_per_node"}
+      - {name: taskspernode,     type: int,                _: 1}
+      - {name: tasks,            type: int, mode: python, update_mode: step, _: "$taskspernode*$nodes"}
+      - {name: threadspertask,  type: int, mode: python, tag: "!container" ,
+        _: "{'Jedi': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128'}['${system_name}']"}
+      - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
+      - {name: timelimit,        tag: "container",         _: "01:30:00"}
+      - {name: timelimit,        tag: "!container",         _: "00:30:00"}
+      - {name: oottime,          type: int,                _: 120}
+      - {name: ootsignal,        type: int,                _: 12}
+      - {name: hint,                                      _: "nomultithread"}
+      - {name: outlogfile,                                _: "job.out"}
+      - {name: outerrfile,                                _: "job.err"}
+      - {name: ready_file,                _: "ready"}
+      - {name: error_file,                _: "error"}
+      - {name: additional_job_config, mode: text,                     _: "#SBATCH --signal=B:${ootsignal}@${oottime}"}
+      - {name: root_dir,            type: str,               _: "$jube_benchmark_home/.."}
+      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-02.html
+      # nvcr.io/nvidia/pytorch:24.02-py3
+      - {name: singularity_file, type: str, tag: "Jedi|GH200",
+         _: "$root_dir/containers/ngc2402_pytorch23_cuda123_nccl219_py310_arm.sif"}
+      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-06.html
+      # nvcr.io/nvidia/pytorch:24.06-py3
+      - {name: singularity_file, type: str, tag: "WAIH100|H100|A100", 
+          _: "$root_dir/containers/ngc2406_pytorch24_cuda125_nccl2215_py310.sif"}
       - name: ibcomm
         tag: "!GH200"
         _: |
@@ -151,68 +200,6 @@ parameterset:
       - name: masteri
         tag: "Jedi"
         _: ""
-
-  - name: systemParameter
-    init_with: platform.xml
-    parameter:
-      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-02.html
-      # nvcr.io/nvidia/pytorch:24.02-py3
-      - {name: singularity_file, type: str, tag: "Jedi|GH200",
-         _: "$root_dir/containers/ngc_2402_pytorch23_py310_cuda123_nccl219_arm.sif"}
-      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-06.html
-      # nvcr.io/nvidia/pytorch:24.06-py3
-      - {name: singularity_file, type: str, tag: "WAIH100|H100|A100", 
-          _: "$root_dir/containers/ngc_2406_pytorch24_py310_cuda125_nccl2215.sif"}
-      - {name: gpus_per_node,    type: int, tag: "!GH200+!container", _: 4}
-      - {name: gpus_per_node,    type: int, tag: "H100+container", _: 1}
-      - {name: gpus_per_node,    type: int, tag: "GH200",  _: 1}
-      - {name: nodes,            type: int, tag: "container",   _: 1}
-      - {name: nodes,            type: int, tag: "800M",   _: 1}
-      - {name: nodes,            type: int, tag: "13B",    _: 44}
-      - {name: nodes,            type: int, tag: "175B",   _: 16}
-      - {name: total_devices,            type: int, mode: python, update_mode: step, _: "$gpus_per_node*$nodes"}
-      - {name: timelimit,        tag: "container",         _: "01:30:00"}
-      - {name: timelimit,        tag: "!container",         _: "00:30:00"}
-      - {name: oottime,          type: int,                _: 120}
-      - {name: ootsignal,        type: int,                _: 12}
-      - {name: taskspernode,     type: int,                _: 1}
-      - {name: tasks,            type: int, mode: python, update_mode: step, _: "$taskspernode*$nodes"}
-      - {name: hint,                                      _: "nomultithread"}
-      - {name: gres,                                      _: "gpu:$gpus_per_node"}
-      - {name: outlogfile,                                _: "job.out"}
-      - {name: outerrfile,                                _: "job.err"}
-      - {name: account,         tag: "!WAIH100",          _: "zam"}
-      - {name: account,         tag: "WAIH100",           _: "westai0005"}
-      - {name: queue,           mode: python,             
-       _: "{'Jedi': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-wai','H100': 'dc-h100' ,'A100': 'dc-gpu'}['${system_name}']"}
-      - {name: threadspertask,  type: int, mode: python, tag: "!container" ,
-        _: "{'Jedi': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128'}['${system_name}']"}
-      - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
-      - {name: ready_file,                _: "ready"}
-      - {name: error_file,                _: "error"}
-      - {name: additional_job_config, mode: text,                     _: "#SBATCH --signal=B:${ootsignal}@${oottime}"}
-      - name: variable_export
-        mode: shell
-        tag: "container+(H100|GH200)"
-        separator: "!"
-        _: |
-            echo "export BENCH_DIR=${jube_benchmark_home}"
-            echo "export ACCELERATOR=$system_name"
-      - {name: measurement,  _: $variable_export}
-      - name: executable
-        mode: python
-        separator: ";"
-        tag: "!container"
-        update_mode: step
-        _:
-          "{'benchmark': \"bash -c \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt &\\n(${args_executable}) &\\nwait\\ncd $$OLDDIR\"}['$jube_step_name']"
-      - name: executable
-        mode: python
-        separator: "!"
-        tag: "container"
-        update_mode: step
-        _: 
-          "{'get_container': 'bash  ${jube_benchmark_home}/get_pytorch_container.sh'}['$jube_step_name']"
       - name: preprocess
         mode: text
         tag: "!container"
@@ -228,8 +215,19 @@ parameterset:
               echo "BENCH_DIR is not set. Please set it to the llm_training directory of benchmark" >&2
               exit 1
           fi
-          source $$BENCH_DIR/llm_variables.bash
-          [ "x$$DATA_OUTPUT_PATH" = x ] &&  DATA_OUTPUT_PATH="$$BENCH_OUTPUT_DIR"/"$nlp_model_size"_model_"$$SLURM_JOB_ID"
+          # Input data
+          VOCAB_FILE="$BENCH_DIR"/aux/tokenizers/gpt2-vocab.json
+          MERGE_FILE="$BENCH_DIR"/aux/tokenizers/gpt2-merges.txt
+
+          # Path to a singular, preprocessed dataset.
+          LLM_DATA_PATH="$BENCH_DIR"/llm_data/oscar_text_document
+
+          # Output data
+          # The main directory you want to store output in.
+          BENCH_OUTPUT_DIR="$BENCH_DIR"/output
+          export PYTHONPATH="$BENCH_DIR/Megatron-LM":$PYTHONPATH
+
+          [ "x$$DATA_OUTPUT_PATH" = x ] &&  DATA_OUTPUT_PATH="$$BENCH_OUTPUT_DIR"/"$llm_model_size"_model_"$$SLURM_JOB_ID"
           [ "x$$CHECKPOINT_PATH" = x ] && CHECKPOINT_PATH=$$DATA_OUTPUT_PATH/checkpoints
           [ "x$$TENSORBOARD_PATH" = x ] &&  TENSORBOARD_PATH=$$DATA_OUTPUT_PATH/tensorboard
           [ "x$$LOGS_PATH" = x ] &&  LOGS_PATH=$$DATA_OUTPUT_PATH/logs
@@ -307,6 +305,28 @@ parameterset:
           }
           # Trap out-of-time signal to create the error file
           trap oothandler $ootsignal
+      - name: variable_export
+        mode: shell
+        tag: "container+(H100|GH200)"
+        separator: "!"
+        _: |
+           echo "export BENCH_DIR=${jube_benchmark_home}"
+           echo "export ACCELERATOR=$system_name"
+      - {name: measurement,  _: $variable_export}
+      - name: executable
+        mode: python
+        separator: ";"
+        tag: "!container"
+        update_mode: step
+        _:
+          "{'benchmark': \"bash -c \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt &\\n(${args_executable}) &\\nwait\\ncd $$OLDDIR\"}['$jube_step_name']"
+      - name: executable
+        mode: python
+        separator: "!"
+        tag: "container"
+        update_mode: step
+        _: 
+          "{'get_container': 'bash  ${jube_benchmark_home}/get_pytorch_container.sh'}['$jube_step_name']"
 
   - name: executeset
     init_with: platform.xml
@@ -337,11 +357,12 @@ patternset:
       - {name: iter_pat, type: int, _: "iteration\\s+$jube_pat_int/\\s*$jube_pat_nint"}
       - {name: iterations, type: int, mode: python, _: "$iter_pat_max"}
       - {name: tflops_pat, type: float, _: "TFLOPs:\\s+$jube_pat_fp"}
+      # https://github.com/NVIDIA/Megatron-LM/blob/f7727433293427bef04858f67b2889fe9b177d88/megatron/training.py#L598
       - {name: elp_pat, type: float, _: "elapsed time per iteration \\(s\\):\\s+$jube_pat_fp"}
       - {name: tokens_per_second, type: float, mode: python, _: "(1.0/$elp_pat_avg)*$global_batch_size*$sequence_length"}
       - {name: jobid, type: int, _: "Submitted batch job $jube_pat_int" }
       - {name: throughput_in_time, type: float, mode: python, _: "(20000000/$tokens_per_second)"}
-
+      # to-do: add energy
 analyser:
     name: analyse
     reduce: false
@@ -362,16 +383,19 @@ result:
         - {title: "Version", _: system_version}
         - {title: "Queue", _: queue}
         - {title: "JobTime", _: timelimit}
-        - {title: "ModelSize", _: nlp_model_size}
+        - {title: "Model", _: model_type}
+        - {title: "ModelSize", _: llm_model_size}
+        - {title: "Dataset", _: dataset}
         - {title: "Nodes", _: nodes}
         - {title: "Devices", _: total_devices}
-        - {title: "BatchSize", _: global_batch_size}
+        - {title: "GlobalBatchSize", _: global_batch_size}
         - {title: "PipelineParallel", _: pp_size}
         - {title: "TensorParallel", _: tp_size}
+        - {title: "DataParallel", _: dp_size}
         - {title: "Iterations", _: iterations}
         # - {title: "TFLOPs logged", _: tflops_pat_cnt}
         - {title: "Time/iteration(s)", format: ".2f", _: elp_pat_avg}
-        - {title: "Tokens/sec",format: ".2f", _: tokens_per_second}
+        - {title: "Tokens/second",format: ".2f", _: tokens_per_second}
         - {title: "Avg_TFLOPs/GPU", format: ".2f", _: tflops_pat_avg}
         
         # - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
@@ -397,7 +421,7 @@ step:
       tag: "!container"
       do:
         - export BENCH_DIR=$jube_benchmark_home
-        - bash $BENCH_DIR/setup_llm.sh
+        - bash $BENCH_DIR/setup_nvidia_llm.sh
 
     - name: benchmark
       tag: "!container"

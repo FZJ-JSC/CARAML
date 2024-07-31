@@ -7,15 +7,13 @@ if [ "x$BENCH_DIR" = "x" ]; then
     exit 1
 fi
 
-DONE_FILE=$BENCH_DIR/nlp_build_done
+DONE_FILE=$BENCH_DIR/llm_nvidia_build_done
 PATCH_APPLIED=$BENCH_DIR/megatron_patch_applied
 
 if [ -f $DONE_FILE ]; then
     echo "$DONE_FILE exists, exiting" >&2
     exit 0
 fi
-
-source $BENCH_DIR/llm_variables.bash || exit 1
 
 export CUDA_VISIBLE_DEVICES=0
 

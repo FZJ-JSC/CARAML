@@ -7,11 +7,17 @@ fi
 
 export ROOT_DIR=$BENCH_DIR/..
 
-TENSORFLOW_CONTAINER_FILE_NVIDIA=$ROOT_DIR/containers/ngc_2301_tf115_py38_cuda1201_nccl2165.sif
-TENSORFLOW_CONTAINER_FILE_GH=$ROOT_DIR/containers/ngc_2301_tf115_py38_cuda1201_nccl2165_arm.sif
-TENSORFLOW_CONTAINER_FILE_MI250=$ROOT_DIR/containers/tensorflow_rocm50_tf27-dev.sif
-TENSORFLOW_CONTAINER_FILE_GC200=$ROOT_DIR/containers/tensorflow_poplar310_tf263_mpi4py.sif
+TENSORFLOW_CONTAINER_FILE_NVIDIA=$ROOT_DIR/containers/ngc2301_tf115_cuda1201_nccl2165_py38.sif
+TENSORFLOW_CONTAINER_FILE_GH=$ROOT_DIR/containers/ngc2301_tf115_cuda1201_nccl2165_py38_arm.sif
+TENSORFLOW_CONTAINER_FILE_MI250=$ROOT_DIR/containers/amd_tf27_rocm50_py39-dev.sif
+TENSORFLOW_CONTAINER_FILE_GC200=$ROOT_DIR/containers/ipu_tf263_poplar310_py38.sif
 TENSORFLOW_CONTAINER_FILE_DONE=$BENCH_DIR/tensorflow_container_done
+
+TENSORFLOW_PACKAGES_MI250=$BENCH_DIR/amd_tensorflow_packages
+TENSORFLOW_PACKAGES_GC200=$BENCH_DIR/ipu_tensorflow_packages
+TENSORFLOW_PACKAGES_FILE_MI250=$BENCH_DIR/amd_tensorflow_packages_installed
+TENSORFLOW_PACKAGES_FILE_GC200=$BENCH_DIR/ipu_tensorflow_packages_installed
+
 
 if ! [ -d "$ROOT_DIR/containers" ]; then
     mkdir -p "$ROOT_DIR/containers/tmp_dir"
@@ -59,8 +65,8 @@ else
     fi
 fi
 
-if ! [ -f $BENCH_DIR/amd_packages_installed ] && [ "$ACCELERATOR" = "MI250" ]; then
-    mkdir -p $BENCH_DIR/amd_packages
+if ! [ -f $TENSORFLOW_PACKAGES_FILE_MI250 ] && [ "$ACCELERATOR" = "MI250" ]; then
+    mkdir -p $TENSORFLOW_PACKAGES_MI250
     apptainer exec $TENSORFLOW_CONTAINER_FILE_MI250 \
                     python -m pip install \
                     --upgrade pip setuptools distlib \
@@ -68,16 +74,16 @@ if ! [ -f $BENCH_DIR/amd_packages_installed ] && [ "$ACCELERATOR" = "MI250" ]; t
     export PIP_USER=0 
     apptainer exec $TENSORFLOW_CONTAINER_FILE_MI250 \
                     python -m pip install \
-                    --prefix=$BENCH_DIR/amd_packages \
+                    --prefix=$TENSORFLOW_PACKAGES_MI250 \
                     --ignore-installed --no-deps \
                     --no-cache-dir \
-                    -r $BENCH_DIR/amd_requirements.txt\
+                    -r $BENCH_DIR/amd_mi250_tensorflow_requirements.txt\
                      >&2
-    touch $BENCH_DIR/amd_packages_installed
-    echo "Done building additional packages for $ACCELERATOR in $BENCH_DIR/amd_packages" >&2
+    touch $TENSORFLOW_PACKAGES_FILE_MI250
+    echo "Done building additional packages for $ACCELERATOR in $TENSORFLOW_PACKAGES_MI250" >&2
 
-elif ! [ -f $BENCH_DIR/ipu_packages_installed ] && [ "$ACCELERATOR" = "GC200" ]; then
-    mkdir -p $BENCH_DIR/ipu_packages
+elif ! [ -f $TENSORFLOW_PACKAGES_FILE_GC200 ] && [ "$ACCELERATOR" = "GC200" ]; then
+    mkdir -p $TENSORFLOW_PACKAGES_GC200
     apptainer exec $TENSORFLOW_CONTAINER_FILE_GC200 \
                     python -m pip install \
                     --upgrade pip setuptools distlib \
@@ -85,13 +91,13 @@ elif ! [ -f $BENCH_DIR/ipu_packages_installed ] && [ "$ACCELERATOR" = "GC200" ];
     export PIP_USER=0 
     apptainer exec $TENSORFLOW_CONTAINER_FILE_GC200 \
                     python -m pip install \
-                    --prefix=$BENCH_DIR/ipu_packages \
+                    --prefix=$TENSORFLOW_PACKAGES_GC200 \
                     --ignore-installed --no-deps \
                     --no-cache-dir \
-                    -r $BENCH_DIR/ipu_requirements.txt \
+                    -r $BENCH_DIR/ipu_gc200_tensorflow_requirements.txt \
                      >&2
-    touch $BENCH_DIR/ipu_packages_installed
-    echo "Done building additional packages for $ACCELERATOR in $BENCH_DIR/ipu_packages" >&2
+    touch $TENSORFLOW_PACKAGES_FILE_GC200
+    echo "Done building additional packages for $ACCELERATOR in $TENSORFLOW_PACKAGES_GC200" >&2
 
 else
     echo "No additional packages required for $ACCELERATOR" >&2
