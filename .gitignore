@@ -3,12 +3,18 @@ llm_training/llm_benchmark_nvidia_run/
 llm_training/llm_benchmark_ipu_run/
 llm_training/ipu_gc200_cache 
 llm_training/ipu_torch_packages
+llm_training/amd_torch_packages
 llm_training/ipu_torch_packages_installed
+llm_training/amd_torch_packages_installed
 llm_training/ipu_torch_wrap.sh
+llm_training/amd_torch_wrap.sh
 llm_training/Megatron-LM/
+llm_training/Megatron-LM-ROCm/
 llm_training/output/
 llm_training/megatron_patch_applied
 llm_training/llm_nvidia_build_done
+llm_training/megatron_rocm_patch_applied
+llm_training/llm_amd_build_done
 llm_training/llm_data/index-cache
 llm_training/pytorch_container_done
 resnet50/tf_resnet50*
@@ -24,3 +30,4 @@ resnet50/result/*.png
 resnet50/result/*.svg
 llm_training/result/*.png
 llm_training/result/*.svg
+tmp_dir/

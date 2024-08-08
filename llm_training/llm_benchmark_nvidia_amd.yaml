@@ -1,6 +1,6 @@
-name:    llm-nvidia
-outpath: llm_benchmark_nvidia_run
-comment: llm benchmark jube script for NVIDIA-A100,H100,GH200
+name:    llm-nvidia-amd
+outpath: llm_benchmark_nvidia_amd_run
+comment: llm benchmark jube script for NVIDIA-A100,H100,GH200 and AMD-MI250
 # Megatron-LM benchmark for 
   #   JEDI-GH200 NVIDIA Node:
   #   4× NVIDIA GH200 Grace-Hopper Superchip 
@@ -45,6 +45,17 @@ comment: llm benchmark jube script for NVIDIA-A100,H100,GH200
   #   Network: 2× InfiniBand HDR (NVIDIA Mellanox Connect-X6)
   #   Available: 192 nodes
 
+  # JURECA-MI200 AMD Node:
+  #  2× AMD MI250
+  #  CPU: AMD EPYC 7443 processor (Milan); 2 sockets, 24 cores per socket, 
+  #   SMT-2 (total: 2×24×2 = 96 threads) in NPS-4 1 configuration (details for AMD EPYC 7443 on WikiChip)
+  #  Memory: 512 GiB DDR4-3200 RAM (of which at least 20 GB is taken by the system software stack, 
+  #   including the file system); 256 GB per socket; 8 memory channels per socket (2 channels per NUMA domain)
+  #  GPU: 4 × AMD MI250 GPUs, each with 128 GB memory; the GPUs are built as Multi Chip Modules (MCM) 
+  #   and because of that they are shown as 8 GPUs with 64 GB memory each.
+  #  Network: 1 × Mellanox HDR InfiniBand ConnectX 6 (100 Gbit/s)
+  #  Available: 2 nodes
+
 parameterset:
   - name: systemInfo
     parameter:
@@ -53,6 +64,7 @@ parameterset:
       - {name: system_name, type: str, tag: "WAIH100", _: "WAIH100"}
       - {name: system_name, type: str, tag: "H100",    _: "H100"}
       - {name: system_name, type: str, tag: "A100",    _: "A100"}
+      - {name: system_name, type: str, tag: "MI250",   _: "MI250"}
       - {name: system_version,         mode: shell,    _: "echo 2024.01"}
 
   - name: modelParameter
@@ -75,14 +87,16 @@ parameterset:
       - {name: micro_batch_size,  type: int, mode: python, _: "[4,2,2][$modelidx]"}
       - {name: gas,               type: int, mode: python, _: "[1,64,64][$modelidx]"}
       # global_batch_size has to be divisible by dp_size*micro_batch_size*gas; 
-      - {name: global_batch_size, type: int, tag: "800M+!container", seperator: ",", _: "2048"}
+      - {name: global_batch_size, type: int, tag: "800M+!container", seperator: ",", _: "16"}
       #16,32,64,128,256,512,1024,2048,4096
       - {name: global_batch_size, type: int, tag: "!800M", mode: python, 
          _: "int( $dp_size * $micro_batch_size * $gas)"}
       - {name: sequence_length,  type: int,                _: 2048}
-      - {name: modelargs,             tag: "800M",  mode: text,        _: --fp16}
+      - {name: modelargs,             tag: "800M",  mode: text,       _: --fp16}
       - {name: modelargs,             tag: "13B",  mode: text,        _: --ffn-hidden-size 20480 --fp16}
       - {name: modelargs,             tag: "175B", mode: text,        _: --bf16}
+      - {name: megatron_repo,              tag: "Jedi|GH200|WAIH100|H100|A100", mode: text, _: Megatron-LM}
+      - {name: megatron_repo,              tag: "MI250",                        mode: text, _: Megatron-LM-ROCm}
       - name: optimizerargs
         mode: text
         _: >
@@ -98,6 +112,24 @@ parameterset:
           --clip-grad 1.0 
           --weight-decay 1e-1 
           --use-distributed-optimizer
+      - name: additionalargs
+        mode: text
+        tag: "Jedi|GH200|WAIH100|H100|A100"
+        _: >
+          --loss-scale-window 500 
+          --hysteresis 2 
+          --min-loss-scale 1.0
+          --initial-loss-scale 4096 
+          --position-embedding-type rope 
+          --use-flash-attn 
+      - name: additionalargs
+        mode: text
+        tag: "MI250"
+        _: >
+          --position-embedding-type rotary
+          --attention-head-type multihead 
+          --no-gradient-accumulation-fusion 
+          --data-impl mmap   
       - name: gptargs
         _: >
           --num-layers $nlayers 
@@ -111,19 +143,14 @@ parameterset:
           --vocab-file $$VOCAB_FILE 
           --merge-file $$MERGE_FILE 
           --tokenizer-type GPT2BPETokenizer 
-          --loss-scale-window 500 
-          --hysteresis 2 
-          --min-loss-scale 1.0
-          --initial-loss-scale 4096 
           --init-method-std 0.0048
           --seed 42 
-          --position-embedding-type rope 
-          --use-flash-attn 
           --sequence-parallel 
           --recompute-activations 
           --recompute-granularity selective 
           $modelargs 
           $optimizerargs 
+          $additionalargs
           --exit-duration-in-mins 60
       - name: outputargs
         _: > 
@@ -143,19 +170,20 @@ parameterset:
       - {name: account,         tag: "!WAIH100",          _: "zam"}
       - {name: account,         tag: "WAIH100",           _: "westai0005"}
       - {name: queue,           mode: python,             
-       _: "{'Jedi': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-wai','H100': 'dc-h100' ,'A100': 'dc-gpu'}['${system_name}']"}
+       _: "{'Jedi': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-wai','H100': 'dc-h100' ,'A100': 'dc-gpu', 'MI250': 'dc-mi200'}['${system_name}']"}
       - {name: nodes,            type: int, tag: "container",   _: 1}
       - {name: nodes,            type: int, tag: "800M",   _: 1}
       - {name: nodes,            type: int, tag: "13B",    _: 44}
       - {name: nodes,            type: int, tag: "175B",   _: 16}
-      - {name: gpus_per_node,    type: int, tag: "!GH200+!container", _: 4}
-      - {name: gpus_per_node,    type: int, tag: "H100+container", _: 1}
+      - {name: gpus_per_node,    type: int, tag: "!GH200+!MI250+!container", _: 4}
+      - {name: gpus_per_node,    type: int, tag: "MI250+!container", _: 4}
+      - {name: gpus_per_node,    type: int, tag: "(H100|MI250)+container", _: 1}
       - {name: gpus_per_node,    type: int, tag: "GH200",  _: 1}
-      - {name: gres,                                      _: "gpu:$gpus_per_node"}
+      - {name: gres,                        tag: "!MI250", _: "gpu:$gpus_per_node"}
       - {name: taskspernode,     type: int,                _: 1}
       - {name: tasks,            type: int, mode: python, update_mode: step, _: "$taskspernode*$nodes"}
       - {name: threadspertask,  type: int, mode: python, tag: "!container" ,
-        _: "{'Jedi': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128'}['${system_name}']"}
+        _: "{'Jedi': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128', 'MI250': '48'}['${system_name}']"}
       - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
       - {name: timelimit,        tag: "container",         _: "01:30:00"}
       - {name: timelimit,        tag: "!container",         _: "00:30:00"}
@@ -176,14 +204,18 @@ parameterset:
       # nvcr.io/nvidia/pytorch:24.06-py3
       - {name: singularity_file, type: str, tag: "WAIH100|H100|A100", 
           _: "$root_dir/containers/ngc2406_pytorch24_cuda125_nccl2215_py310.sif"}
+      # https://hub.docker.com/layers/rocm/pytorch/rocm6.1.2_ubuntu20.04_py3.9_pytorch_release-2.1.2/images/sha256-e3c1c3cde0886689b139daad7a62ad24af3f292855f683d7b28806ae9f1d2a7e?context=explore
+      # rocm6.1.2_ubuntu20.04_py3.9_pytorch_release-2.1.2
+      - {name: singularity_file, type: str, tag: "MI250", 
+          _: "$root_dir/containers/amd_pytorch21_rocm612_rccl2186_py39.sif"}
       - name: ibcomm
-        tag: "!GH200"
+        tag: "!GH200|!MI250"
         _: |
           # setting IB for out of band communication
           export NCCL_SOCKET_IFNAME=ib0
           export GLOO_SOCKET_IFNAME=ib0
       - name: ibcomm
-        tag: "GH200"
+        tag: "GH200|MI250"
         _: ""
       - name: rdzv_conf
         tag: "!Jedi"
@@ -194,11 +226,11 @@ parameterset:
         _: >
           --rdzv_conf=is_host=True  
       - name: masteri
-        tag: "!Jedi"
+        tag: "!Jedi|!MI250"
         _: |
           MASTER_ADDR="${MASTER_ADDR}i"
       - name: masteri
-        tag: "Jedi"
+        tag: "Jedi|MI250"
         _: ""
       - name: preprocess
         mode: text
@@ -210,11 +242,17 @@ parameterset:
           echo "Submitted batch job $${SLURM_JOBID}"
           export SRUN_CPUS_PER_TASK=$${SLURM_CPUS_PER_TASK}
           export BENCH_DIR=$jube_benchmark_home
-          export CUDA_VISIBLE_DEVICES=0,1,2,3
+          if [ "$systemname" = "MI250" ]; then
+              export ROCM_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+          else
+              export CUDA_VISIBLE_DEVICES=0,1,2,3
+          fi
+
           if [ "x$$BENCH_DIR" = "x" ]; then
               echo "BENCH_DIR is not set. Please set it to the llm_training directory of benchmark" >&2
               exit 1
           fi
+
           # Input data
           VOCAB_FILE="$BENCH_DIR"/aux/tokenizers/gpt2-vocab.json
           MERGE_FILE="$BENCH_DIR"/aux/tokenizers/gpt2-merges.txt
@@ -225,7 +263,7 @@ parameterset:
           # Output data
           # The main directory you want to store output in.
           BENCH_OUTPUT_DIR="$BENCH_DIR"/output
-          export PYTHONPATH="$BENCH_DIR/Megatron-LM":$PYTHONPATH
+          export PYTHONPATH="$BENCH_DIR/$megatron_repo":$PYTHONPATH
 
           [ "x$$DATA_OUTPUT_PATH" = x ] &&  DATA_OUTPUT_PATH="$$BENCH_OUTPUT_DIR"/"$llm_model_size"_model_"$$SLURM_JOB_ID"
           [ "x$$CHECKPOINT_PATH" = x ] && CHECKPOINT_PATH=$$DATA_OUTPUT_PATH/checkpoints
@@ -234,17 +272,16 @@ parameterset:
           mkdir -p $$LOGS_PATH
 
           OLDDIR=$(pwd)
-          cd "$BENCH_DIR/Megatron-LM" || exit 1
+          cd "$BENCH_DIR/$megatron_repo" || exit 1
 
           rm -f megatron/fused_kernels/build/lock
           CLEAN_PREV_JIT_BUILD=0
           ((CLEAN_PREV_JIT_BUILD)) && rm -rf megatron/fused_kernels/{build,__pycache__}
 
-      
           MASTER_ADDR="$$(scontrol show hostnames "$$SLURM_JOB_NODELIST" | head -n 1)"
           $masteri
           MASTER_PORT=6000
-          export LAUNCHER="python -u -m fixed_torch_run \
+          export LAUNCHER="python fixed_torch_run.py \
               --nproc_per_node $gpus_per_node \
               --nnodes $nodes \
               --rdzv_endpoint $MASTER_ADDR:$MASTER_PORT \
@@ -273,6 +310,8 @@ parameterset:
           # Necessary for some Megatron-LM settings. We set it all the time just
           # to be safe.
           export CUDA_DEVICE_MAX_CONNECTIONS=1
+          export HF_DATASETS_OFFLINE=1
+          export TRANSFORMERS_OFFLINE=1
 
           # With CUDA_LAUNCH_BLOCKING=1, NCCL/2.12.7-1-CUDA-11.5 is needed
           # since NCCL/2.14.3-1-CUDA-11.5 and later versions cause internal streams clashes
@@ -307,7 +346,6 @@ parameterset:
           trap oothandler $ootsignal
       - name: variable_export
         mode: shell
-        tag: "container+(H100|GH200)"
         separator: "!"
         _: |
            echo "export BENCH_DIR=${jube_benchmark_home}"
@@ -316,10 +354,17 @@ parameterset:
       - name: executable
         mode: python
         separator: ";"
-        tag: "!container"
+        tag: "!container+!MI250"
         update_mode: step
         _:
           "{'benchmark': \"bash -c \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt &\\n(${args_executable}) &\\nwait\\ncd $$OLDDIR\"}['$jube_step_name']"
+      - name: executable
+        mode: python
+        separator: ";"
+        tag: "!container+MI250"
+        update_mode: step
+        _:
+          "{'benchmark': \"\\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt &\\n(${args_executable}) &\\nwait\\ncd $$OLDDIR\"}['$jube_step_name']"
       - name: executable
         mode: python
         separator: "!"
@@ -339,28 +384,40 @@ parameterset:
           --cpu_bind=v --mpi=pmi2 apptainer exec  --bind=${jube_benchmark_home} --nv ${singularity_file}
       - name: args_starter
         mode: text
-        tag: "!Jedi+!container"
+        tag: "!Jedi+!MI250+!container"
         separator: |
         _: |
           --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home} --nv ${singularity_file}
+      - name: args_starter
+        mode: text
+        tag: "MI250+!container"
+        separator: |
+        _: |
+          --cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home} ${singularity_file} ${jube_benchmark_home}/amd_torch_wrap.sh
       - name: args_executable
         mode: text
-        tag: "!container"
+        tag: "!MI250+!container"
         separator: |
         _:  |
           srun --overlap nvidia-smi  --query-gpu=index,timestamp,name,power.draw --format=csv -f ${jube_benchmark_home}/${system_name}_energy_${SLURM_JOB_NAME}_${SLURM_JOB_ID}.csv --loop-ms=1000 
-
+      # - name: args_executable
+      #   mode: text
+      #   tag: "MI250+!container"
+      #   separator: |
+      #   _:  |
+      #     srun  $executable
 
 patternset:
    - name: perf_patterns
      pattern:
-      - {name: iter_pat, type: int, _: "iteration\\s+$jube_pat_int/\\s*$jube_pat_nint"}
+      - {name: jobid,      type: int, _: "Submitted batch job $jube_pat_int" }
+      - {name: iter_pat,   type: int, _: "iteration\\s+$jube_pat_int/\\s*$jube_pat_nint"}
       - {name: iterations, type: int, mode: python, _: "$iter_pat_max"}
       - {name: tflops_pat, type: float, _: "TFLOPs:\\s+$jube_pat_fp"}
       # https://github.com/NVIDIA/Megatron-LM/blob/f7727433293427bef04858f67b2889fe9b177d88/megatron/training.py#L598
-      - {name: elp_pat, type: float, _: "elapsed time per iteration \\(s\\):\\s+$jube_pat_fp"}
-      - {name: tokens_per_second, type: float, mode: python, _: "(1.0/$elp_pat_avg)*$global_batch_size*$sequence_length"}
-      - {name: jobid, type: int, _: "Submitted batch job $jube_pat_int" }
+      # https://github.com/bigcode-project/Megatron-LM/blob/21045b59127cd2d5509f1ca27d81fae7b485bd22/megatron/training.py#L616
+      - {name: elp_pat,    type: float, _: "elapsed time per iteration \\(s\\):\\s+$jube_pat_fp"}
+      - {name: tokens_per_second, type: float,  mode: python, _: "(1.0/$elp_pat_avg)*$global_batch_size*$sequence_length"}
       - {name: throughput_in_time, type: float, mode: python, _: "(20000000/$tokens_per_second)"}
       # to-do: add energy
 analyser:
@@ -403,7 +460,8 @@ result:
 step:
 
     - name: get_container
-      tag: container+(H100|GH200)
+      tag: container+(H100|GH200|MI250)
+      iterations: 1
       use:
         - systemInfo
         - systemParameter
@@ -418,13 +476,21 @@ step:
         _:          $submit $submit_script     
 
     - name: setup_llm
-      tag: "!container"
+      tag: "!MI250+!container"
+      iterations: 1
       do:
         - export BENCH_DIR=$jube_benchmark_home
         - bash $BENCH_DIR/setup_nvidia_llm.sh
+    - name: setup_llm
+      tag: "MI250+!container"
+      iterations: 1
+      do:
+        - export BENCH_DIR=$jube_benchmark_home
+        - bash $BENCH_DIR/setup_amd_llm.sh
 
     - name: benchmark
       tag: "!container"
+      iterations: 1
       depend: setup_llm
       use:
         - systemInfo

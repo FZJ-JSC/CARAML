@@ -41,7 +41,7 @@ parameterset:
       - {name: total_devices,    type: int, mode: python, _: "${replication_fact}*${ipus_per_replica}"}
       - {name: batch_size,               type: int, seperator: ",", _: "1"}
       # 16,32,64,128,256,512,1024,2048,4096
-      - {name: gas,                      type: int, seperator: ",", _: "16"}
+      - {name: gas,                      type: int, seperator: ",", _: "512"}
       - {name: global_batch_size,        type: int, mode: python, 
          _: "int($batch_size*$gas*$replication_fact)"}
       - {name: sequence_length,           type: int,                _: 1024}

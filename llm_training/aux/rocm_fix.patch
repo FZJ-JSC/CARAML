@@ -1,0 +1,344 @@
+diff --git a/megatron/arguments.py b/megatron/arguments.py
+index 39d0c8f8..8aaf35a6 100644
+--- a/megatron/arguments.py
++++ b/megatron/arguments.py
+@@ -301,7 +301,7 @@ def validate_args(args, defaults={}):
+         if args.decoder_seq_length is not None:
+             assert args.max_position_embeddings >= args.decoder_seq_length
+     else:
+-        assert args.max_position_embeddings is None
++        assert args.max_position_embeddings is not None
+         
+     if args.lr is not None:
+         assert args.min_lr <= args.lr
+diff --git a/megatron/data/gpt_dataset.py b/megatron/data/gpt_dataset.py
+index 8b218ba5..02a462a9 100644
+--- a/megatron/data/gpt_dataset.py
++++ b/megatron/data/gpt_dataset.py
+@@ -234,11 +234,12 @@ def get_indexed_dataset_(data_prefix, data_impl, skip_warmup):
+ class GPTDataset(torch.utils.data.Dataset):
+ 
+     def __init__(self, name, data_prefix, documents, indexed_dataset,
+-                 num_samples, seq_length, seed):
++                 num_samples, seq_length, seed,
++                 return_doc_ids=False):
+ 
+         self.name = name
+         self.indexed_dataset = indexed_dataset
+-
++        self.return_doc_ids = return_doc_ids   
+         # Checks
+         assert np.min(documents) >= 0
+         assert np.max(documents) < indexed_dataset.sizes.shape[0]
+@@ -248,14 +249,19 @@ class GPTDataset(torch.utils.data.Dataset):
+             self.name, data_prefix, documents, self.indexed_dataset.sizes,
+             num_samples, seq_length, seed)
+         
+-        self.args = get_args()
+-        self.tokenizer = get_tokenizer()
+-        self.np_rng = np.random.RandomState(seed=seed) # rng state for FIM
+-        
+-        try:
+-            self.suffix_tok_id, self.prefix_tok_id, self.middle_tok_id, self.pad_tok_id = (self.tokenizer.special_tokens[tok] for tok in [FIM_SUFFIX, FIM_PREFIX, FIM_MIDDLE, FIM_PAD])
+-        except KeyError:
+-            self.suffix_tok_id, self.prefix_tok_id, self.middle_tok_id, self.pad_tok_id = (self.tokenizer.vocab[tok] for tok in [FIM_SUFFIX, FIM_PREFIX, FIM_MIDDLE, FIM_PAD])
++        # self.args = get_args()
++        # self.tokenizer = get_tokenizer()
++        # self.np_rng = np.random.RandomState(seed=seed) # rng state for FIM
++
++        # self.fim_rate = self.args.fim_rate
++        # self.fim_spm_rate = self.args.fim_spm_rate
++        # self.fragment_fim_rate = self.args.fragment_fim_rate
++        # self.fim_split_sample = self.tokenizer.vocab[self.args.fim_split_sample] if self.args.fim_split_sample is not None else None
++
++        # try:
++        #     self.suffix_tok_id, self.prefix_tok_id, self.middle_tok_id, self.pad_tok_id = (self.tokenizer.special_tokens[tok] for tok in [FIM_SUFFIX, FIM_PREFIX, FIM_MIDDLE, FIM_PAD])
++        # except KeyError:
++        #     self.suffix_tok_id, self.prefix_tok_id, self.middle_tok_id, self.pad_tok_id = (self.tokenizer.vocab[tok] for tok in [FIM_SUFFIX, FIM_PREFIX, FIM_MIDDLE, FIM_PAD])
+ 
+     def __len__(self):
+         # -1 is due to data structure used to retieve the index:
+@@ -288,58 +294,98 @@ class GPTDataset(torch.utils.data.Dataset):
+                 length=offset_l + 1))
+             sample = np.concatenate(sample_list)
+         
+-        # Code from: https://github.com/EleutherAI/gpt-neox/blob/FIM-clean/megatron/data/gpt2_dataset.py#L109
+-        # TODO(Hailey): can merge the code below this line with code above this line.
+-        # TODO(Hailey), cont: above already iterates through loop, so just add the permuting in there?
+-        sample = np.array(sample, dtype=np.int64)
+-        sample_len = sample.shape[0]
+-        # # print(sample, sample.shape)
+-        # # do FIM here, if enabled
+-        # TODO: Do we handle the following point from FIM paper?
+-        # To transform data in the character space for context-level FIM, the tokenized documents have to be decoded back into strings before FIM augmentation. Depending on the vocabulary, some care has to be given to ensure decoding does not introduce any spurious characters into training. For example, utf-8 characters are encoded as multiple tokens with a BPE vocabulary; they can result in fragments from chunking and fail to decode. To prevent unforeseen errors midway through training, we encourage checking for these fragments at the beginning or end of a context and removing them.
+-        fim_rate = self.args.fim_rate
+-
+-        if fim_rate != 0:
+-            assert (fim_rate <= 1 and fim_rate >= 0), "FIM rate must be a probability 0 <= rate <= 1"
+-
+-            eod = self.tokenizer.eod
+-            segment_breaks = np.argwhere(sample == eod) # split sample by document
+-
+-            if segment_breaks.shape != (0, 1): # then there is an EOD token in this example
+-                curr_start_position = 0
+-                new_samples = []
+-                for loc in np.nditer(segment_breaks):
+-                    # Only permute non-empty segments.
+-                    if loc - curr_start_position > 0:
+-                        # permute {prefix, suffix, middle} or {suffix, prefix, middle}
+-                        permuted, self.np_rng = \
+-                            permute(sample[curr_start_position:loc], self.np_rng, self.args, self.tokenizer, truncate_or_pad=False,
+-                                    suffix_tok_id=self.suffix_tok_id, prefix_tok_id=self.prefix_tok_id, middle_tok_id=self.middle_tok_id, pad_tok_id=self.pad_tok_id)
+-                        new_samples += [permuted, [eod]]
+-
+-                    curr_start_position = loc + 1 # jump over the EOD token
+-                # Permute the segment after the last EOD
+-                permuted, self.np_rng = \
+-                    permute(sample[curr_start_position:], self.np_rng, self.args, self.tokenizer, truncate_or_pad=False,
+-                            suffix_tok_id=self.suffix_tok_id, prefix_tok_id=self.prefix_tok_id, middle_tok_id=self.middle_tok_id, pad_tok_id=self.pad_tok_id)
+-                new_samples.append(permuted)
+-
+-                sample = np.concatenate(new_samples)
+-            else:
+-                sample, self.np_rng = permute(sample, self.np_rng, self.args, self.tokenizer, truncate_or_pad=False,
+-                                              suffix_tok_id=self.suffix_tok_id, prefix_tok_id=self.prefix_tok_id, middle_tok_id=self.middle_tok_id, pad_tok_id=self.pad_tok_id)
+-        
+-        # Truncate or pad sequence to max-length
+-        diff = sample.shape[0] - sample_len
+-        if diff > 0: # too long
+-            sample = sample[:sample_len]
+-        elif diff < 0: # too short
+-            sample = np.concatenate([sample, np.full((-1 * diff), self.pad_tok_id)])
+-
+-        assert sample.shape[0] == sample_len
+-        # end FIM-specific code
+-        return {"text": sample}
+-        # return {'text': np.array(sample, dtype=np.int64)}
++        # # Code from: https://github.com/EleutherAI/gpt-neox/blob/FIM-clean/megatron/data/gpt2_dataset.py#L109
++        # # TODO(Hailey): can merge the code below this line with code above this line.
++        # # TODO(Hailey), cont: above already iterates through loop, so just add the permuting in there?
++        # sample = np.array(sample, dtype=np.int64)
++        # sample_len = sample.shape[0]
++        # # # print(sample, sample.shape)
++        # # # do FIM here, if enabled
++        # # TODO: Do we handle the following point from FIM paper?
++        # # To transform data in the character space for context-level FIM, the tokenized documents have to be decoded back into strings before FIM augmentation. Depending on the vocabulary, some care has to be given to ensure decoding does not introduce any spurious characters into training. For example, utf-8 characters are encoded as multiple tokens with a BPE vocabulary; they can result in fragments from chunking and fail to decode. To prevent unforeseen errors midway through training, we encourage checking for these fragments at the beginning or end of a context and removing them.
++        # eod = self.tokenizer.eod
++        # segment_breaks = np.argwhere(sample == eod) # split sample by document
++
++        # if self.fim_rate == 0:
++        #     return sample.astype(np.int64)
++    
++        # def fim_permute_sequence(sequence, rate):
++        #     return permute(
++        #         sequence,
++        #         self.np_rng,
++        #         rate,
++        #         self.fim_spm_rate,
++        #         self.tokenizer,
++        #         truncate_or_pad=False,
++        #         suffix_tok_id=self.suffix_tok_id,
++        #         prefix_tok_id=self.prefix_tok_id,
++        #         middle_tok_id=self.middle_tok_id,
++        #         pad_tok_id=self.pad_tok_id,
++        #     )
++
++        # def fim_split_and_permute_sequence(sequence):
++        #     """
++        #     If self.fim_split_sample is not None, split the sequence.
++        #     Then apply FIM on the fragments, or the whole sequence if self.fim_split_sample is None.
++        #     """
++        #     if self.fim_split_sample is None:
++        #         return fim_permute_sequence(sequence, self.fim_rate)
++        #     # fim_split_sample is set: split the sample on this token and permute each fragment separately.
++        #     # Typically, if each sample is a repository, then we split again on the file level.
++        #     # Each fragment is a file, and we permute the files.
++        #     fragment_breaks = np.argwhere(sequence == self.fim_split_sample)
++        #     if fragment_breaks.shape == (0, 1):
++        #         # no split token in this sample
++        #         return fim_permute_sequence(sequence, self.fim_rate)
++        #     if not self.np_rng.binomial(1, self.fim_rate):
++        #         # don't do FIM preproc
++        #         return sequence
++        #     # Do FIM on each fragment
++        #     curr_start_position = 0
++        #     new_samples = []
++        #     for loc in np.nditer(fragment_breaks):
++        #         if loc - curr_start_position > 0:
++        #             permuted = fim_permute_sequence(sequence[curr_start_position:loc], self.fragment_fim_rate)
++        #             new_samples += [permuted, [self.fim_split_sample]]
++        #         curr_start_position = loc + 1  # Jump over the split token
++        #     # Permute the segment after the last split token
++        #     permuted = fim_permute_sequence(sequence[curr_start_position:], self.fragment_fim_rate)
++        #     new_samples.append(permuted)
++        #     return np.concatenate(new_samples)
++
++        # if segment_breaks.shape != (0, 1):  # then there is an EOD token in this example
++        #     curr_start_position = 0
++        #     new_samples = []
++        #     for loc in np.nditer(segment_breaks):
++        #         # Only permute non-empty segments.
++        #         if loc - curr_start_position > 0:
++        #             # permute {prefix, suffix, middle} or {suffix, prefix, middle}
++        #             permuted = fim_split_and_permute_sequence(sample[curr_start_position:loc])
++        #             new_samples += [permuted, [eod]]
++
++        #         curr_start_position = loc + 1  # jump over the EOD token
++        #     # Permute the segment after the last EOD
++        #     permuted = fim_split_and_permute_sequence(sample[curr_start_position:])
++        #     new_samples.append(permuted)
++
++        #     sample = np.concatenate(new_samples)
++        # else:
++        #     sample = fim_split_and_permute_sequence(sample)
++            
++        # # Truncate or pad sequence to max-length
++        # diff = sample.shape[0] - sample_len
++        # if diff > 0: # too long
++        #     sample = sample[:sample_len]
++        # elif diff < 0: # too short
++        #     sample = np.concatenate([sample, np.full((-1 * diff), self.pad_tok_id)])
++
++        # assert sample.shape[0] == sample_len
++        # # end FIM-specific code
++        if self.return_doc_ids: # for retro preprocessing
++            return {'text': sample,
++                    'doc_ids': np.array(doc_ids, dtype=np.int64)}
++        else:
++            return {'text': np.array(sample, dtype=np.int64)}
+ 
+ 
+ def _build_index_mappings(name, data_prefix, documents, sizes,
+diff --git a/megatron/initialize.py b/megatron/initialize.py
+index 3170ba62..9b9ee3c3 100644
+--- a/megatron/initialize.py
++++ b/megatron/initialize.py
+@@ -172,6 +172,16 @@ def _compile_dependencies():
+         print('>>> done with dataset index builder. Compilation time: {:.3f} '
+               'seconds'.format(time.time() - start_time), flush=True)
+ 
++    try:
++        # Skip the rest if the kernels are unnecessary or already available (ex. from apex)
++        if args.use_flash_attn or args.masked_softmax_fusion:
++            import scaled_upper_triang_masked_softmax_cuda
++            import scaled_masked_softmax_cuda
++            print(" Masked kernels ...")
++        return
++    except ImportError:
++        pass
++
+     # ==================
+     # Load fused kernels
+     # ==================
+diff --git a/megatron/model/transformer.py b/megatron/model/transformer.py
+index 2e437a90..6c34a116 100644
+--- a/megatron/model/transformer.py
++++ b/megatron/model/transformer.py
+@@ -46,9 +46,16 @@ except ImportError:
+ 
+ try:
+     from flash_attn.flash_attn_interface import flash_attn_unpadded_func
++    flash_attn_func = None
+ except ImportError:
+-    flash_attn_unpadded_func = None
+-
++    try:
++        from flash_attn.flash_attn_interface import (
++            flash_attn_func,
++            flash_attn_varlen_func as flash_attn_unpadded_func
++        )
++    except ImportError:
++        flash_attn_func = None
++        flash_attn_unpadded_func = None
+ 
+ """ We use the following notation throughout this file:
+      h: hidden size
+diff --git a/megatron/optimizer/clip_grads.py b/megatron/optimizer/clip_grads.py
+index ad249bd5..22fe8275 100644
+--- a/megatron/optimizer/clip_grads.py
++++ b/megatron/optimizer/clip_grads.py
+@@ -16,7 +16,7 @@
+ """Gradient clipping."""
+ 
+ import torch
+-from torch._six import inf
++from torch import inf
+ 
+ from apex.multi_tensor_apply import multi_tensor_applier
+ import amp_C
+diff --git a/megatron/optimizer/distrib_optimizer.py b/megatron/optimizer/distrib_optimizer.py
+index ee266175..a3489f49 100644
+--- a/megatron/optimizer/distrib_optimizer.py
++++ b/megatron/optimizer/distrib_optimizer.py
+@@ -394,6 +394,30 @@ class DistributedOptimizer(MixedPrecisionOptimizer):
+                                                    self.model_param_gbuf_map,
+                                                    self.opt_group_ranges)
+ 
++        # Initialize param buffers.
++        # - These are views on the DDP model's grad buffers, that share
++        #   storage & have their own dtype. This is safe because the param
++        #   dtype size is always <= grad dtype size.
++        self.param_buffers = []
++        for model_index, model in enumerate(self.models):
++            current_param_buffers = {}
++            for dtype, grad_buffer in model._grad_buffers.items():
++
++                # Handle older/newer method for getting untyped storage.
++                try:
++                    storage = grad_buffer.data.untyped_storage() 
++                except:
++                    storage = grad_buffer.data.storage().untyped()
++
++                # Typed param buffer.
++                param_buffer = torch.tensor(
++                    storage,
++                    dtype = dtype,
++                    device = grad_buffer.data.device)
++                param_buffer = param_buffer[:grad_buffer.numel_padded]
++                current_param_buffers[dtype] = param_buffer
++            self.param_buffers.append(current_param_buffers)
++
+         # Update optimizer groups.
+         # - Also, leverage state_dict() and load_state_dict() to
+         #   recast preexisting per-param state tensors.
+diff --git a/megatron/training.py b/megatron/training.py
+index 468a6002..aa2e36d3 100644
+--- a/megatron/training.py
++++ b/megatron/training.py
+@@ -107,13 +107,14 @@ def pretrain(train_valid_test_dataset_provider,
+     initialize_megatron(extra_args_provider=extra_args_provider,
+                         args_defaults=args_defaults)
+     # Set pytorch JIT layer fusion options and warmup JIT functions.
+-    set_jit_fusion_options()
++    # set_jit_fusion_options()
+ 
+     # Adjust the startup time so it reflects the largest value.
+     # This will be closer to what scheduler will see (outside of
+     # image ... launches.
+     global _TRAIN_START_TIME
+-    start_time_tensor = torch.cuda.DoubleTensor([_TRAIN_START_TIME])
++    # start_time_tensor = torch.cuda.DoubleTensor([_TRAIN_START_TIME])
++    start_time_tensor = torch.tensor([_TRAIN_START_TIME], dtype=torch.double, device='cuda')
+     torch.distributed.all_reduce(start_time_tensor,
+                                  op=torch.distributed.ReduceOp.MIN)
+     _TRAIN_START_TIME = start_time_tensor.item()
+@@ -631,8 +632,8 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
+             iteration, args.train_iters)
+         log_string += ' consumed samples: {:12d} |'.format(
+             args.consumed_train_samples)
+-        log_string += ' elapsed time per iteration (ms): {:.1f} |'.format(
+-            elapsed_time_per_iteration * 1000.0)
++        log_string += ' elapsed time per iteration (s): {:.1f} |'.format(
++            elapsed_time_per_iteration)
+         log_string += ' learning rate: {:.3E} |'.format(learning_rate)
+         log_string += ' global batch size: {:5d} |'.format(batch_size)
+         for key in total_loss_dict:
+@@ -655,6 +656,8 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
+         log_string += ' number of nan iterations: {:3d} |'.format(
+             total_loss_dict[nan_iters_key])
+         log_string += ' TFLOPs: {:.2f} |'.format(tflops)
++        log_string += ' tokens-per-second-per-gpu: {:.2f} |'.format(tokens_per_sec_per_gpu)
++        log_string += ' tokens-per-second: {:.2f} |'.format(tokens_per_sec_per_gpu*num_gpus)
+         total_loss_dict[advanced_iters_key] = 0
+         total_loss_dict[skipped_iters_key] = 0
+         total_loss_dict[nan_iters_key] = 0
