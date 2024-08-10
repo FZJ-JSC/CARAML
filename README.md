@@ -115,8 +115,8 @@ Set the required `system` and `model` parameters and the path to downloaded Imag
    ```
 - Example result 
     ```bash
-    JobID,System,Version,Queue,Runtime(s),Model,Dataset,Nodes,Devices,Tasks/Node,Threads/Task,GlobalBatchSize,BatchSize/Device,Images/sec
-    3912,Jedi,2024.01,all,100.97,resnet50_v2,ImageNet,1,4,4,72,2048,512,20391.0275
+    JobID,System,Version,Queue,Runtime(s),Model,Dataset,Nodes,Devices,Tasks/Node,Threads/Task,GlobalBatchSize,BatchSize/Device,Images/second,Energy/Device(Wh)
+    5363,Jedi,2024.01,all,107.95,resnet50_v2,ImageNet,1,4,4,72,2048,512,20844.545,[8.574799247222222, 9.012636700000002, 8.749778680555556, 8.730718611111111]
     ```
 ## LLM-Training
 Set the required `system` and `model` parameters  in [llm_benchmark_nvidia_amd.yaml](./llm_training/llm_benchmark_nvidia_amd.yaml)
@@ -165,9 +165,9 @@ for NVIDIA and AMD devices and in [llm_benchmark_ipu.yaml](./llm_training/llm_be
 - Example result
 
 ```bash
-JobID,System,Version,Queue,JobTime,Model,ModelSize,Dataset,Nodes,Devices,DataParallel,IPU/replica,GlobalBatchSize,Time/iteration(s),StepThroughput(tokens/s),Tokens/second
-13011743,GC200,2024.01,dc-ipu,00:40:00,GPT,117M,Synthetic,1,4,1,4,16,0.99,64.94,64.94
+JobID,System,Version,Queue,JobTime,Model,ModelSize,Dataset,Nodes,Devices,DataParallel,IPU/replica,GlobalBatchSize,Time/iteration(s),Tokens/second,Energy/Device(Wh)
+13011841,GC200,2024.01,dc-ipu,00:40:00,GPT,117M,Synthetic,1,4,1,4,2048,11.17,183.37,[19.25481377957927, 19.965746845867898, 20.331749628523987, 20.657090717011027]
 
-JobID,System,Version,Queue,JobTime,Model,ModelSize,Dataset,Nodes,Devices,GlobalBatchSize,PipelineParallel,TensorParallel,DataParallel,Iterations,Time/iteration(s),Tokens/second,Avg_TFLOPs/GPU
-3914,Jedi,2024.01,all,00:30:00,GPT,800M,OSCAR,1,4,2048,1,1,4,25,26.52,158152.80,321.65
+JobID,System,Version,Queue,JobTime,Model,ModelSize,Dataset,Nodes,Devices,GlobalBatchSize,PipelineParallel,TensorParallel,DataParallel,Iterations,Time/iteration(s),Tokens/second,Avg_TFLOPs/GPU,Energy/Device(Wh)
+3914,Jedi,2024.01,all,00:30:00,GPT,800M,OSCAR,1,4,2048,1,1,4,25,26.52,158152.80,321.65,[536.957653, 543.789541, 521.937084, 530.451145]
 ```

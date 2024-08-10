@@ -328,7 +328,7 @@ index 468a6002..aa2e36d3 100644
              args.consumed_train_samples)
 -        log_string += ' elapsed time per iteration (ms): {:.1f} |'.format(
 -            elapsed_time_per_iteration * 1000.0)
-+        log_string += ' elapsed time per iteration (s): {:.1f} |'.format(
++        log_string += ' elapsed time per iteration (s): {:.3f} |'.format(
 +            elapsed_time_per_iteration)
          log_string += ' learning rate: {:.3E} |'.format(learning_rate)
          log_string += ' global batch size: {:5d} |'.format(batch_size)

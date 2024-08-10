@@ -151,7 +151,7 @@ parameterset:
           $modelargs 
           $optimizerargs 
           $additionalargs
-          --exit-duration-in-mins 60
+          --exit-duration-in-mins 30
       - name: outputargs
         _: > 
           --log-interval 5
@@ -338,6 +338,7 @@ parameterset:
           export DS_BUILD_OPS=1
 
           function oothandler {
+              python3 $BENCH_DIR/calc_energy.py --powerfile=$BENCH_DIR/${jube_wp_relpath}/${system_name}_power_${SLURM_JOB_ID}.csv
               echo Received out-of-time signal, creating file "$ready_file" and exiting at $(date) with oottime "$oottime"
               touch $OLDDIR/$ready_file
               exit $ootsignal
@@ -399,7 +400,7 @@ parameterset:
         tag: "!MI250+!container"
         separator: |
         _:  |
-          srun --overlap nvidia-smi  --query-gpu=index,timestamp,name,power.draw --format=csv -f ${jube_benchmark_home}/${system_name}_energy_${SLURM_JOB_NAME}_${SLURM_JOB_ID}.csv --loop-ms=1000 
+          srun --overlap nvidia-smi  --query-gpu=index,timestamp,name,power.draw --format=csv -f ${jube_benchmark_home}/${jube_wp_relpath}/${system_name}_power_${SLURM_JOB_ID}.csv --loop-ms=1000 
       # - name: args_executable
       #   mode: text
       #   tag: "MI250+!container"
@@ -417,9 +418,10 @@ patternset:
       # https://github.com/NVIDIA/Megatron-LM/blob/f7727433293427bef04858f67b2889fe9b177d88/megatron/training.py#L598
       # https://github.com/bigcode-project/Megatron-LM/blob/21045b59127cd2d5509f1ca27d81fae7b485bd22/megatron/training.py#L616
       - {name: elp_pat,    type: float, _: "elapsed time per iteration \\(s\\):\\s+$jube_pat_fp"}
-      - {name: tokens_per_second, type: float,  mode: python, _: "(1.0/$elp_pat_avg)*$global_batch_size*$sequence_length"}
+      - {name: tokens_per_second,  type: float,  mode: python, _: "(1.0/$elp_pat_avg)*$global_batch_size*$sequence_length"}
       - {name: throughput_in_time, type: float, mode: python, _: "(20000000/$tokens_per_second)"}
-      # to-do: add energy
+      - {name: energy_list_reimann,type: str,   _: "Energy-per-GPU-list integrated\\(Wh\\): (\\[.*?\\])"}
+
 analyser:
     name: analyse
     reduce: false
@@ -454,7 +456,7 @@ result:
         - {title: "Time/iteration(s)", format: ".2f", _: elp_pat_avg}
         - {title: "Tokens/second",format: ".2f", _: tokens_per_second}
         - {title: "Avg_TFLOPs/GPU", format: ".2f", _: tflops_pat_avg}
-        
+        - {title: "Energy/Device(Wh)",  _: energy_list_reimann}
         # - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
 
 step:

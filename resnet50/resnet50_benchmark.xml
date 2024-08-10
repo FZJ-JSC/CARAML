@@ -67,10 +67,8 @@
 
 <jube>
   <!-- resnet50_benchmark_run -->
-  <benchmark name="tensorflow_benchmark" outpath="test_data">
+  <benchmark name="tensorflow_benchmark" outpath="resnet50_benchmark_run">
     <parameterset name="systemInfo">
-      <!-- <parameter name="system_name" mode="shell">cat /etc/FZJ/systemname |tr -d \"\n\"</parameter>
-      <parameter name="systemname" mode="shell">echo $SYSTEMNAME</parameter> -->
       <parameter name="system_version" mode="shell">echo 2024.01</parameter>
       <parameter name="system_name" type="str" tag="Jedi">Jedi</parameter>
       <parameter name="system_name" type="str" tag="GH200">GH200</parameter>
@@ -84,12 +82,12 @@
     <parameterset name="systemParameter" init_with="platform.xml">
       <parameter name="nodes" type="int" separator=";" tag="!container" mode="python">
       { 
-        "Jedi": "1",
+        "Jedi": "1;2",
         "GH200": "1",
-        "WAIH100": "1",
+        "WAIH100": "1;2",
         "H100": "1" ,
-        "A100": "1",
-        "MI250": "1",
+        "A100": "1;2",
+        "MI250": "1;2",
         "GC200": "1"
       }["${system_name}"]</parameter>
       <parameter name="nodes" type="int" separator=";" tag="container+(H100|GH200|MI250|GC200)" mode="python">
@@ -104,8 +102,7 @@
         "Jedi": "1;2;3;4",
         "GH200": "1",
         "WAIH100": "1;2;3;4",
-        "H100": "1" ,
-        <!-- ;2;3;4 -->
+        "H100": "1;2;3;4" ,
         "A100": "1;2;3;4",
         "MI250": "1;2;3;4;5;6;7;8",
         "GC200": "1"
@@ -143,8 +140,6 @@
       <parameter name="timelimit" tag="!GC100+!container">00:20:00</parameter>
       <parameter name="timelimit" tag="GC100+!container">01:20:00</parameter>
       <parameter name="timelimit" tag="container+(H100|GH200|MI250|GC200)">01:20:00</parameter>
-      <parameter name="total_devices" type="int" separator=";" mode="python" tag="!GC200">${nodes}*${taskspernode}</parameter>
-      <parameter name="total_devices" type="int" separator=";" mode="python" tag="GC200">${replicas}</parameter>
       <!-- When using Horovod ntasks=hvd_size=num_workers; there can be only one gpu per worker; hence num_gpus=1 -->
       <parameter name="gpus" type="int" separator=";">1</parameter>
       <parameter name="singularity_file" mode="python">
@@ -161,9 +156,11 @@
        <!-- https://hub.docker.com/layers/john856/caraml/tensorflow_poplar310_tf263_mpi4py/images/sha256-57cb664cb1e3493657c576b07a0d274363e1097e62820d2f7e03db5e68fe1f0e?context=repo -->
         "GC200": "$root_dir/containers/ipu_tf263_poplar310_py38.sif" 
       }["${system_name}"]</parameter>
+      <!-- Benchmark file -->
       <parameter name="executable" tag="!GC200+!container">python ${folder}/tf_cnn_benchmarks.py</parameter>
       <parameter name="executable" tag="GC200+!container">python3 ${folder}/train.py</parameter>
       <parameter name="executable" tag="container+(H100|GH200|MI250|GC200)">bash ${jube_benchmark_home}/get_tensorflow_container.sh</parameter>
+      <!-- Benchmark file arguments -->
       <parameter name="args_exec" separator="!" tag="GC200+!container"> ${data_arg} --config=${tf_model}  --validation=false  --mlperf-logging --num-replicas=${replicas} --num-epochs=1 --global-batch-size=${global_batch_size} --micro-batch-size=${ipu_mbs} --dbn-replica-group-size=${dbn_replica}</parameter>
       <parameter name="args_exec" separator="!" tag="!GC200+!container+!synthetic">--num_gpus $gpus --model $tf_model --batch_size ${batch_size_per_device} --data_dir=${data_dir} --variable_update horovod --use_fp16=True</parameter>
       <parameter name="args_exec" separator="!" tag="!GC200+!container+synthetic">--num_gpus $gpus --model $tf_model --batch_size ${batch_size_per_device} --variable_update horovod --use_fp16=True</parameter>
@@ -173,16 +170,17 @@
     <parameterset name="modelParameter">
       <parameter name="tf_model" tag="!GC200">resnet50_v2</parameter>
       <parameter name="tf_model" tag="GC200">resnet50_mlperf_pod4_bs20</parameter>
-      <!-- 1;2;3;4 -->
+      <!-- Data Parallel for IPU -->
       <parameter name="replicas" type="int" separator=";" tag="GC200">1;2;3;4</parameter>
+      <parameter name="total_devices" type="int" separator=";" mode="python" tag="!GC200">${nodes}*${taskspernode}</parameter>
+      <parameter name="total_devices" type="int" separator=";" mode="python" tag="GC200">${replicas}</parameter>
       <!--Replace with path to ImageNet data -->
       <parameter name="data_dir">/p/project1/cjsc/benchmark/imagenet-processed/</parameter>
       <parameter name="data_arg" tag="GC200+!synthetic">--dataset-path=${data_dir}</parameter>
       <parameter name="data_arg" tag="GC200+synthetic">--synthetic-data=ipu</parameter>
       <parameter name="dataset" tag="synthetic">ImageNet(synthetic)</parameter>
-       <parameter name="dataset" tag="!synthetic">ImageNet</parameter>
-      <parameter name="global_batch_size"  type="int"  separator=";">128 </parameter>
-      <!-- 16;32;64;128;256;512;1024;2048;4096 -->
+      <parameter name="dataset" tag="!synthetic">ImageNet</parameter>
+      <parameter name="global_batch_size"  type="int"  separator=";">16;32;64;128;256;512;1024;2048;4096</parameter>
       <parameter name="dbn_replica" type="int" separator=";" tag="GC200">${replicas}</parameter>
       <parameter name="batch_size_per_device"  type="int" separator=";" mode="python" tag="!GC200">int(${global_batch_size}/${total_devices})</parameter>
       <parameter name="batch_size_per_device"  type="int" separator=";" mode="python" tag="GC200">int(${global_batch_size}/${replicas})</parameter>
@@ -270,7 +268,7 @@
       <do done_file="$done_file"></do>
     </step>
 
-    <step name="wrap" tag="!container">
+    <step name="wrap" tag="!container+GC200">
       <use>systemInfo</use>
       <use>systemParameter</use>
       <use>environment</use>
@@ -279,7 +277,7 @@
       <do  mode="shell" tag="GC200"> chmod u+rwx ${jube_benchmark_home}/ipu_tensorflow_wrap.sh </do>
     </step>
 
-    <step name="execute" tag="!container" depend="wrap" iterations="1">
+    <step name="execute" tag="!container+GC200" depend="wrap" iterations="1">
       <use>files</use>
       <use>systemInfo</use>
       <use>systemParameter</use>
@@ -292,6 +290,18 @@
       <do done_file="$done_file"></do>
     </step>
 
+   <step name="execute" tag="!container+!GC200" iterations="1">
+      <use>files</use>
+      <use>systemInfo</use>
+      <use>systemParameter</use>
+      <use>modelParameter</use>
+      <use>environment</use>
+      <use>executeset</use>
+      <use from="platform.xml">jobfiles</use>
+      <use from="platform.xml">executesub</use>
+      <do>$submit $submit_script</do>
+      <do done_file="$done_file"></do>
+    </step>
 
     <patternset name="pattern">
       <pattern name="imagespersec" type="float" tag="!GC200">total images/sec: ${jube_pat_fp}</pattern>
@@ -302,8 +312,9 @@
       <!-- Assuming 90 epochs with 1,281,167 training samples of ImageNet, with the simple formula
       [ time_to_report_in_seconds ]  = [epochs] * [images] / [throughput in images/second] -->
       <pattern name="throughput_in_time" type="float" mode="python" unit="s">(90 * 1281167 /$imagespersec)</pattern>
-      <pattern name="energy" unit="Wh" tag="GC200">integrated:\s*\[\s*(\d+(\.\d+)?)(?=,)</pattern>
-      <!-- to-do: add energy -->
+      <!-- <pattern name="energy_average"  tag="GC200">Average-Energy-per-GPU: ${jube_pat_fp}</pattern> -->
+      <pattern name="energy_list_reimann" type="str" >Energy-per-GPU-list integrated\(Wh\): (\[.*?\])</pattern>
+      <pattern name="energy_list_counter" type="str" tag="MI250" >Energy-per-GPU-list from counter\(Wh\): (\[.*?\])</pattern>
     </patternset>
 
     <patternset name="jobnumber">
@@ -328,7 +339,7 @@
     <result>
       <use>analyse</use>
       <table name="result" style="pretty" sort="total_devices,nodes">
-        <column title="Job ID">jobid</column>
+        <column title="JobID">jobid</column>
         <column title="System">system_name</column>
         <column title="Version">system_version</column>
         <column title="Queue">queue</column>
@@ -341,14 +352,17 @@
         <column title="Threads/Task">threadspertask</column>
         <column title="GlobalBatchSize">global_batch_size</column>
         <column title="BatchSize/Device">batch_size_per_device</column>
-        <column title="Images/sec">imagespersec_avg</column>
+        <column title="Images/second">imagespersec_avg</column>
         <!-- <column format=".2f">throughput_in_time</column> -->
+        <column title="Energy/Device(Wh)">energy_list_reimann</column>
+        <column title="Energy_counter/Device(Wh)" tag="MI250">energy_list_counter</column>
+        <!-- <column title="Energy/Device(Wh)" format=".2f">energy_average</column> -->
         <column>args_starter</column>
         <column>args_exec</column>
       </table>
 
       <table name="result_csv" style="csv" sort="total_devices,nodes">
-        <column title="Job ID">jobid</column>
+        <column title="JobID">jobid</column>
         <column title="System">system_name</column>
         <column title="Version">system_version</column>
         <column title="Queue">queue</column>
@@ -361,8 +375,11 @@
         <column title="Threads/Task">threadspertask</column>
         <column title="GlobalBatchSize">global_batch_size</column>
         <column title="BatchSize/Device">batch_size_per_device</column>
-        <column title="Images/sec">imagespersec_avg</column>
+        <column title="Images/second">imagespersec_avg</column>
         <!-- <column format=".2f">throughput_in_time</column> -->
+        <column title="Energy/Device(Wh)">energy_list_reimann</column>
+        <column title="Energy_counter/Device(Wh)" tag="MI250">energy_list_counter</column>
+        <!-- <column title="Energy/Device(Wh)" format=".2f">energy_average</column> -->
       </table>
     </result>
   </benchmark>

@@ -37,13 +37,14 @@ parameterset:
       - {name: layers_per_ipu,           type: str, seperator: ",", _: "0 4 4 4"}
       - {name: matmul_prop,              type: str, seperator: ",", _: "0.15 0.15 0.15 0.15"}
       - {name: device_iter,              type: int, seperator: ",", _: "4"}
+      - {name: num_instances,            type: int, seperator: ",", _: "1"}
       - {name: embedding_serial_fact,    type: int, seperator: ",", _: "4"}
-      - {name: total_devices,    type: int, mode: python, _: "${replication_fact}*${ipus_per_replica}"}
+      - {name: total_devices,    type: int, mode: python, _: "${replication_fact}*${ipus_per_replica}*${num_instances}"}
       - {name: batch_size,               type: int, seperator: ",", _: "1"}
-      # 16,32,64,128,256,512,1024,2048,4096
-      - {name: gas,                      type: int, seperator: ",", _: "512"}
+      # gas: 16,32,64,128,256,512,1024,2048,4096,8192,16384
+      - {name: gas,                      type: int, seperator: ",", _: "128"}
       - {name: global_batch_size,        type: int, mode: python, 
-         _: "int($batch_size*$gas*$replication_fact)"}
+         _: "int($num_instances*$replication_fact*$batch_size*$gas*$device_iter)"}
       - {name: sequence_length,           type: int,                _: 1024}
       - name: optimizerargs
         mode: text
@@ -191,13 +192,14 @@ fileset:
 patternset:
    - name: perf_patterns
      pattern:
-      - {name: jobid, type: int, _: "Submitted batch job $jube_pat_int" }
+      - {name: jobid,              type: int, _: "Submitted batch job $jube_pat_int" }
       # https://github.com/graphcore/examples/blob/3cc8f81f13728dd8c17d0d3c8d2fc1549b159485/nlp/gpt2/pytorch/train_gpt2.py#L271
-      - {name: step_time, type: float,  _: "step_time: ${jube_pat_fp}"}
-      - {name: step_throughput, type: float,  _: "throughput: ${jube_pat_fp}"}
-      - {name: tokens_per_second, type: float, mode: python, _: "(1.0/$step_time_last)*$global_batch_size*$device_iter"}
+      - {name: step_time,          type: float,  _: "step_time: ${jube_pat_fp}"}
+      - {name: step_throughput,    type: float,  _: "throughput: ${jube_pat_fp}"}
+      - {name: tokens_per_second,  type: float, mode: python, _: "($global_batch_size/$step_time_last)"}
       - {name: throughput_in_time, type: float, mode: python, _: "(20000000/$tokens_per_second)"}
-      # to-do add energy
+      # - {name: energy_average,         type: float,  _: "Average-Energy-per-GPU(Wh): ${jube_pat_fp}"}
+      - {name: energy_list_reimann,type: str,  _: "Energy-per-GPU-list integrated\\(Wh\\): (\\[.*?\\])"}
 
 analyser:
     name: analyse
@@ -227,11 +229,13 @@ result:
         - {title: "DataParallel", _: replication_fact}
         - {title: "IPU/replica",  _: ipus_per_replica}
         - {title: "GlobalBatchSize", _: global_batch_size}
-        - {title: "Time/iteration(s)", format: ".2f", _: step_time_last}
-        - {title: "StepThroughput(tokens/s)",format: ".2f", _: step_throughput_last}
-        - {title: "Tokens/second",format: ".2f", _: tokens_per_second} 
+        - {title: "Time/Iteration(s)", format: ".2f", _: step_time_last}
+        # - {title: "StepThroughput(tokens/s)",format: ".2f", _: step_throughput_last}
+        # - {title: "Tokens/second",format: ".2f", _: tokens_per_second} 
+        - {title: "Tokens/second",format: ".2f", _: step_throughput_last} 
         # - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
-
+        # - {title: "Energy/Device(Wh)", format: ".2f", _: energy_average}
+        - {title: "Energy/Device(Wh)",  _: energy_list_reimann}
 step:
     - name: wrap
       tag: "!container"
