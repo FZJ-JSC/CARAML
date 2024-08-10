@@ -338,7 +338,7 @@ parameterset:
           export DS_BUILD_OPS=1
 
           function oothandler {
-              python3 $BENCH_DIR/calc_energy.py --powerfile=$BENCH_DIR/${jube_wp_relpath}/${system_name}_power_${SLURM_JOB_ID}.csv
+              python3 $BENCH_DIR/aux/calc_energy.py --powerfile=$BENCH_DIR/${jube_wp_relpath}/${system_name}_power_${SLURM_JOB_ID}.csv
               echo Received out-of-time signal, creating file "$ready_file" and exiting at $(date) with oottime "$oottime"
               touch $OLDDIR/$ready_file
               exit $ootsignal
