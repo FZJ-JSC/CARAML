@@ -43,7 +43,7 @@ Additionally the `hostname` is appended with an `i` for allowing communication o
 
 For ResNet50, either download the `ImageNet LSVRC 2012` dataset from the [source](http://image-net.org/download) or [via kaggle](https://www.kaggle.com/c/imagenet-object-localization-challenge/data) (Disk space required: 144 GB) or use tag `synthetic` with `JUBE` to use synthetic data for benchmark.
 
-For LLM training, a subset (790 samples, 10 MB) of the small version of the [Oscar](https://huggingface.co/bigscience/misc-test-data/resolve/main/stas/oscar-1GB.jsonl.xz) dataset that is already pre-processed using [GPT-2 tokenizers](./llm_training/aux/tokenizers/) is provided in [llm_data](./llm_training/llm_data/).
+For LLM training, a subset (790 samples, 10 MB) of the small version of the [OSCAR](https://huggingface.co/bigscience/misc-test-data/resolve/main/stas/oscar-1GB.jsonl.xz) dataset that is already pre-processed using [GPT-2 tokenizers](./llm_training/aux/tokenizers/) is provided in [llm_data](./llm_training/llm_data/).
 
 # Implementation
 
@@ -53,7 +53,7 @@ The `JUBE` file [resnet50_benchmark.xml](./resnet50/resnet50_benchmark.xml) sets
 
 - Pulling TensorFlow containers and `pip` installing additional packages required for AMD and Graphcore using [get_tensorflow_container.sh](./resnet50/get_tensorflow_container.sh) file
 - Cloning:
-    -  [tf_cnn_benchmarks](https://github.com/chelseajohn/tf_cnn_benchmarks)(forked version) for NVIDIA & AMD 
+    - [tf_cnn_benchmarks](https://github.com/chelseajohn/tf_cnn_benchmarks) (forked version) for NVIDIA & AMD 
     - [examples](https://github.com/chelseajohn/examples) (forked version) for Graphcore
 
 The performance is measured in terms of `images/sec`.
@@ -64,7 +64,7 @@ The `JUBE` file [llm_benchmark_nvidia_amd.yaml](./llm_training/llm_benchmark_nvi
 - Pulling PyTorch containers and `pip` installing additional packages required for Graphcore and AMD  using [get_pytorch_container.sh](./llm_training/get_pytorch_container.sh) file
 - Cloning:
     - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM.git) with commit: `f7727433293427bef04858f67b2889fe9b177d88` and applying [patch](./llm_training/aux/nvidia_energy_llm_fix.patch) using [setup_llm.sh](./llm_training/setup_llm.sh) file for NVIDIA,
-    - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and applying [patch](./llm_training/aux/amd_energy_llm_fix.patch)using [setup_llm_amd.sh](./llm_training/setup_amd_llm.sh) file for AMD 
+    - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and applying [patch](./llm_training/aux/amd_energy_llm_fix.patch) using [setup_llm_amd.sh](./llm_training/setup_amd_llm.sh) file for AMD 
     - [examples](https://github.com/chelseajohn/examples) (forked version) for Graphcore
 
 The performance is measured  in terms of  `tokens/sec`.
