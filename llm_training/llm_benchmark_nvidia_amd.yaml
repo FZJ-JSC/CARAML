@@ -92,6 +92,7 @@ parameterset:
       - {name: global_batch_size, type: int, tag: "!800M", mode: python, 
          _: "int( $dp_size * $micro_batch_size * $gas)"}
       - {name: sequence_length,  type: int,                _: 2048}
+      - {name: exit_duration,    type: int,                _: 5}
       - {name: modelargs,             tag: "800M",  mode: text,       _: --fp16}
       - {name: modelargs,             tag: "13B",  mode: text,        _: --ffn-hidden-size 20480 --fp16}
       - {name: modelargs,             tag: "175B", mode: text,        _: --bf16}
@@ -151,7 +152,7 @@ parameterset:
           $modelargs 
           $optimizerargs 
           $additionalargs
-          --exit-duration-in-mins 30
+          --exit-duration-in-mins ${exit_duration}
       - name: outputargs
         _: > 
           --log-interval 5
@@ -186,7 +187,7 @@ parameterset:
         _: "{'Jedi': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128', 'MI250': '48'}['${system_name}']"}
       - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
       - {name: timelimit,        tag: "container",         _: "01:30:00"}
-      - {name: timelimit,        tag: "!container",         _: "00:30:00"}
+      - {name: timelimit,        tag: "!container",         _: "00:10:00"} # set time limit +4mins than exit_duration
       - {name: oottime,          type: int,                _: 120}
       - {name: ootsignal,        type: int,                _: 12}
       - {name: hint,                                      _: "nomultithread"}
@@ -338,7 +339,6 @@ parameterset:
           export DS_BUILD_OPS=1
 
           function oothandler {
-              python3 $BENCH_DIR/aux/calc_energy.py --powerfile=$BENCH_DIR/${jube_wp_relpath}/${system_name}_power_${SLURM_JOB_ID}.csv
               echo Received out-of-time signal, creating file "$ready_file" and exiting at $(date) with oottime "$oottime"
               touch $OLDDIR/$ready_file
               exit $ootsignal
@@ -351,6 +351,7 @@ parameterset:
         _: |
            echo "export BENCH_DIR=${jube_benchmark_home}"
            echo "export ACCELERATOR=$system_name"
+           echo "export ENERGY_PATH=${jube_benchmark_home}/${jube_wp_relpath}/${system_name}_power.csv"
       - {name: measurement,  _: $variable_export}
       - name: executable
         mode: python
@@ -358,14 +359,14 @@ parameterset:
         tag: "!container+!MI250"
         update_mode: step
         _:
-          "{'benchmark': \"bash -c \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt &\\n(${args_executable}) &\\nwait\\ncd $$OLDDIR\"}['$jube_step_name']"
+          "{'benchmark': \"bash -c \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt &\\nwait\\ncd $$OLDDIR\"}['$jube_step_name']"
       - name: executable
         mode: python
         separator: ";"
         tag: "!container+MI250"
         update_mode: step
         _:
-          "{'benchmark': \"\\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt &\\n(${args_executable}) &\\nwait\\ncd $$OLDDIR\"}['$jube_step_name']"
+          "{'benchmark': \" \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt & \\nwait \\ncd $$OLDDIR\"}['$jube_step_name']"
       - name: executable
         mode: python
         separator: "!"
@@ -395,18 +396,6 @@ parameterset:
         separator: |
         _: |
           --cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home} ${singularity_file} ${jube_benchmark_home}/amd_torch_wrap.sh
-      - name: args_executable
-        mode: text
-        tag: "!MI250+!container"
-        separator: |
-        _:  |
-          srun --overlap nvidia-smi  --query-gpu=index,timestamp,name,power.draw --format=csv -f ${jube_benchmark_home}/${jube_wp_relpath}/${system_name}_power_${SLURM_JOB_ID}.csv --loop-ms=1000 
-      # - name: args_executable
-      #   mode: text
-      #   tag: "MI250+!container"
-      #   separator: |
-      #   _:  |
-      #     srun  $executable
 
 patternset:
    - name: perf_patterns
@@ -421,7 +410,7 @@ patternset:
       - {name: tokens_per_second,  type: float,  mode: python, _: "(1.0/$elp_pat_avg)*$global_batch_size*$sequence_length"}
       - {name: throughput_in_time, type: float, mode: python, _: "(20000000/$tokens_per_second)"}
       - {name: energy_list_reimann,type: str,   _: "Energy-per-GPU-list integrated\\(Wh\\): (\\[.*?\\])"}
-
+      - {name: energy_list_counter,type: str, tag: "MI250",  _: "Energy-per-GPU-list from counter\\(Wh\\): (\\[.*?\\])"}
 analyser:
     name: analyse
     reduce: false
@@ -442,6 +431,7 @@ result:
         - {title: "Version", _: system_version}
         - {title: "Queue", _: queue}
         - {title: "JobTime", _: timelimit}
+        - {title: "Runtime(min)", _: exit_duration}
         - {title: "Model", _: model_type}
         - {title: "ModelSize", _: llm_model_size}
         - {title: "Dataset", _: dataset}
@@ -457,6 +447,7 @@ result:
         - {title: "Tokens/second",format: ".2f", _: tokens_per_second}
         - {title: "Avg_TFLOPs/GPU", format: ".2f", _: tflops_pat_avg}
         - {title: "Energy/Device(Wh)",  _: energy_list_reimann}
+        - {title: "Energy_counter/Device(Wh)", tag: "MI250",  _: energy_list_counter}
         # - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
 
 step:

@@ -302,10 +302,32 @@ index ee266175..a3489f49 100644
          # - Also, leverage state_dict() and load_state_dict() to
          #   recast preexisting per-param state tensors.
 diff --git a/megatron/training.py b/megatron/training.py
-index 468a6002..aa2e36d3 100644
+index 468a6002..030deedd 100644
 --- a/megatron/training.py
 +++ b/megatron/training.py
-@@ -107,13 +107,14 @@ def pretrain(train_valid_test_dataset_provider,
+@@ -18,6 +18,7 @@
+ from datetime import datetime
+ import math
+ import sys
++import os
+ import time
+ 
+ try:
+@@ -59,7 +60,6 @@ from megatron.utils import report_memory
+ from megatron.model.vision.knn_monitor import compute_feature_bank
+ from megatron.data.dataset_utils import analyze_data_prefix
+ 
+-
+ def print_datetime(string):
+     """Note that this call will sync across all ranks."""
+     torch.distributed.barrier()
+@@ -102,18 +102,19 @@ def pretrain(train_valid_test_dataset_provider,
+         args_defaults: a dictionary from argument-name to argument-value. It
+             to set already parse arguments.
+     """
+-
++     
+     # Initalize and get arguments, timers, and Tensorboard writer.
      initialize_megatron(extra_args_provider=extra_args_provider,
                          args_defaults=args_defaults)
      # Set pytorch JIT layer fusion options and warmup JIT functions.
@@ -322,18 +344,36 @@ index 468a6002..aa2e36d3 100644
      torch.distributed.all_reduce(start_time_tensor,
                                   op=torch.distributed.ReduceOp.MIN)
      _TRAIN_START_TIME = start_time_tensor.item()
-@@ -631,8 +632,8 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
+@@ -160,6 +161,9 @@ def pretrain(train_valid_test_dataset_provider,
+                           model, optimizer, opt_param_scheduler,
+                           train_data_iterator, valid_data_iterator,
+                           process_non_loss_data_func)
++        if iteration == -1:
++            print_datetime("Exiting code....")
++            return 
+     print_datetime('after training is done')
+ 
+     if args.do_valid:
+@@ -621,6 +625,7 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
+         tokens_per_sec_per_gpu = (args.seq_length * batch_size) / num_gpus / elapsed_time_per_iteration
+ 
+         tflops = get_tflops(batch_size, elapsed_time_per_iteration)
++        
+         if writer:
+             if args.log_timers_to_tensorboard:
+                 writer.add_scalar('iteration-time',
+@@ -631,8 +636,8 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
              iteration, args.train_iters)
          log_string += ' consumed samples: {:12d} |'.format(
              args.consumed_train_samples)
 -        log_string += ' elapsed time per iteration (ms): {:.1f} |'.format(
 -            elapsed_time_per_iteration * 1000.0)
-+        log_string += ' elapsed time per iteration (s): {:.3f} |'.format(
++        log_string += ' elapsed time per iteration (s): {:.4f} |'.format(
 +            elapsed_time_per_iteration)
          log_string += ' learning rate: {:.3E} |'.format(learning_rate)
          log_string += ' global batch size: {:5d} |'.format(batch_size)
          for key in total_loss_dict:
-@@ -655,6 +656,8 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
+@@ -655,6 +660,8 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
          log_string += ' number of nan iterations: {:3d} |'.format(
              total_loss_dict[nan_iters_key])
          log_string += ' TFLOPs: {:.2f} |'.format(tflops)
@@ -342,3 +382,93 @@ index 468a6002..aa2e36d3 100644
          total_loss_dict[advanced_iters_key] = 0
          total_loss_dict[skipped_iters_key] = 0
          total_loss_dict[nan_iters_key] = 0
+@@ -768,7 +775,10 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
+                 save_checkpoint_and_time(iteration, model, optimizer,
+                                          opt_param_scheduler)
+                 print_datetime('exiting program after receiving SIGTERM.')
+-                sys.exit()
++                if os.getenv("ACCELERATOR") == "MI250":
++                    return -1
++                else:  
++                    sys.exit()
+ 
+         if args.save and args.save_interval and \
+            iteration % args.save_interval == 0:
+@@ -788,8 +798,12 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
+                 if not saved_checkpoint:
+                     save_checkpoint_and_time(iteration, model, optimizer,
+                                              opt_param_scheduler)
++                
+                 print_datetime('exiting program after {} minutes'.format(train_time))
+-                sys.exit()
++                if os.getenv("ACCELERATOR") == "MI250":
++                    return -1
++                else:  
++                    sys.exit()
+ 
+         # Exiting based on iterations
+         if args.exit_interval and iteration % args.exit_interval == 0:
+@@ -798,7 +812,11 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
+                                          opt_param_scheduler)
+             torch.distributed.barrier()
+             print_datetime('exiting program at iteration {}'.format(iteration))
+-            sys.exit()
++            
++            if os.getenv("ACCELERATOR") == "MI250":
++                    return -1
++            else:  
++                    sys.exit()
+ 
+ 
+     return iteration
+diff --git a/megatron/utils.py b/megatron/utils.py
+index d115f815..c0696760 100644
+--- a/megatron/utils.py
++++ b/megatron/utils.py
+@@ -269,3 +269,6 @@ def get_tflops(batch_size, elapsed_time_per_iteration):
+ 
+     tflops = flops_per_iteration / (elapsed_time_per_iteration * args.world_size * (10**12))
+     return tflops
++
++
++
+diff --git a/pretrain_gpt.py b/pretrain_gpt.py
+index f01635b2..7c32e4f5 100644
+--- a/pretrain_gpt.py
++++ b/pretrain_gpt.py
+@@ -14,7 +14,8 @@
+ # limitations under the License.
+ 
+ """Pretrain GPT"""
+-
++import os
++import sys
+ import torch
+ from functools import partial
+ from megatron import get_args
+@@ -154,7 +155,21 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
+ 
+ 
+ if __name__ == "__main__":
+-
+-    pretrain(train_valid_test_datasets_provider, model_provider,
+-             ModelType.encoder_or_decoder,
+-             forward_step, args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
++    if os.getenv("ACCELERATOR") == "MI250":
++        from get_power_rsmi import  power_loop
++        from get_power_rsmi import GetPower
++        with GetPower() as training_scope:
++            pretrain(train_valid_test_datasets_provider, model_provider,
++                    ModelType.encoder_or_decoder,
++                    forward_step, args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
++
++        power_file = os.getenv("ENERGY_PATH") 
++        training_scope.df.to_csv(power_file)
++        energy_int,energy_cnt = training_scope.energy()
++        print_rank_0(f"Energy-per-GPU-list integrated(Wh): {energy_int}")
++        print_rank_0(f"Energy-per-GPU-list from counter(Wh): {energy_cnt}")
++    else:
++        pretrain(train_valid_test_datasets_provider, model_provider,
++                ModelType.encoder_or_decoder,
++                forward_step, args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
++        

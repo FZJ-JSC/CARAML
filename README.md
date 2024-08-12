@@ -26,8 +26,8 @@ CARAML currently offers two benchmarks written in `python`:
     - [graphcore/examples](https://github.com/graphcore/examples) for Graphcore
 
 - GPT Language Model: [LLM-training](./llm_training/) implemented in PyTorch curated from 
-    - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM.git) with commit: `f7727433293427bef04858f67b2889fe9b177d88` and [patch](./llm_training/aux/add_tflops_logging.patch) applied  for NVIDIA
-    - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and [patch](./llm_training/aux/rocm_fix.patch) applied for AMD 
+    - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM.git) with commit: `f7727433293427bef04858f67b2889fe9b177d88` and [patch](./llm_training/aux/nvidia_energy_llm_fix.patch) applied  for NVIDIA
+    - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and [patch](./llm_training/aux/amd_energy_llm_fix.patch) applied for AMD 
     - [graphcore/examples](https://github.com/graphcore/examples) forked version for Graphcore
 
 # Requirements
@@ -63,8 +63,8 @@ The performance is measured in terms of `images/sec`.
 The `JUBE` file [llm_benchmark_nvidia_amd.yaml](./llm_training/llm_benchmark_nvidia_amd.yaml) and [llm_benchmark_ipu.yaml](./llm_training/llm_benchmark_ipu.yaml) sets up the environent by
 - Pulling PyTorch containers and `pip` installing additional packages required for Graphcore and AMD  using [get_pytorch_container.sh](./llm_training/get_pytorch_container.sh) file
 - Cloning:
-    - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM.git) with commit: `f7727433293427bef04858f67b2889fe9b177d88` and applying [patch](./llm_training/aux/add_tflops_logging.patch) using [setup_llm.sh](./llm_training/setup_llm.sh) file for NVIDIA,
-    - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and applying [patch](./llm_training/aux/rocm_fix.patch)using [setup_llm_amd.sh](./llm_training/setup_amd_llm.sh) file for AMD 
+    - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM.git) with commit: `f7727433293427bef04858f67b2889fe9b177d88` and applying [patch](./llm_training/aux/nvidia_energy_llm_fix.patch) using [setup_llm.sh](./llm_training/setup_llm.sh) file for NVIDIA,
+    - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and applying [patch](./llm_training/aux/amd_energy_llm_fix.patch)using [setup_llm_amd.sh](./llm_training/setup_amd_llm.sh) file for AMD 
     - [examples](https://github.com/chelseajohn/examples) (forked version) for Graphcore
 
 The performance is measured  in terms of  `tokens/sec`.
@@ -168,6 +168,6 @@ for NVIDIA and AMD devices and in [llm_benchmark_ipu.yaml](./llm_training/llm_be
 JobID,System,Version,Queue,JobTime,Model,ModelSize,Dataset,Nodes,Devices,DataParallel,IPU/replica,GlobalBatchSize,Time/iteration(s),Tokens/second,Energy/Device(Wh)
 13011841,GC200,2024.01,dc-ipu,00:40:00,GPT,117M,Synthetic,1,4,1,4,2048,11.17,183.37,[19.25481377957927, 19.965746845867898, 20.331749628523987, 20.657090717011027]
 
-JobID,System,Version,Queue,JobTime,Model,ModelSize,Dataset,Nodes,Devices,GlobalBatchSize,PipelineParallel,TensorParallel,DataParallel,Iterations,Time/iteration(s),Tokens/second,Avg_TFLOPs/GPU,Energy/Device(Wh)
-3914,Jedi,2024.01,all,00:30:00,GPT,800M,OSCAR,1,4,2048,1,1,4,25,26.52,158152.80,321.65,[536.957653, 543.789541, 521.937084, 530.451145]
+JobID,System,Version,Queue,JobTime,Runtime(min),Model,ModelSize,Dataset,Nodes,Devices,GlobalBatchSize,PipelineParallel,TensorParallel,DataParallel,Iterations,Time/iteration(s),Tokens/second,Avg_TFLOPs/GPU,Energy/Device(Wh)
+3914,Jedi,2024.01,all,00:34:00,30,GPT,800M,OSCAR,1,4,2048,1,1,4,25,26.52,158152.80,321.65,[536.957653, 543.789541, 521.937084, 530.451145]
 ```

@@ -38,7 +38,7 @@ git checkout f7727433293427bef04858f67b2889fe9b177d88
 
 # apply add_tflops_logging.patch
 if ! [ -f "$PATCH_APPLIED" ]; then
-    git apply "$BENCH_DIR"/aux/add_tflops_logging.patch
+    git apply "$BENCH_DIR"/aux/nvidia_energy_llm_fix.patch
     touch $PATCH_APPLIED
 fi
 
@@ -46,7 +46,9 @@ fi
 if ! [ -f "fixed_torch_run.py" ]; then
   ln -sf "$BENCH_DIR"/aux/fixed_torch_run.py ./fixed_torch_run.py
 fi
-
+if ! [ -f "get_power_nvidia.py" ]; then
+  ln -sf "$BENCH_DIR"/aux/get_power_nvidia.py ./get_power_nvidia.py
+fi
 cd ..
 touch $DONE_FILE
 
