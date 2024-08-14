@@ -152,7 +152,17 @@ for NVIDIA and AMD devices and in [llm_benchmark_ipu.yaml](./llm_training/llm_be
     ```
     If tag `synthetic` is not given, the benchmark will use OSCAR data
 
-- After the benchmark has been executed, to get the result do
+- After the benchmark has been executed, use `jube continue` to postprocess results
+    ```bash
+   jube continue llm_training/llm_benchmark_ipu_run -i last
+   ```
+    OR
+
+   ```bash
+   jube continue llm_training/llm_benchmark_nvidia_amd_run -i last
+   ```
+
+- After the postprocessing, to get the result do
     ```bash
    jube result llm_training/llm_benchmark_ipu_run -i last
    ```
@@ -165,9 +175,12 @@ for NVIDIA and AMD devices and in [llm_benchmark_ipu.yaml](./llm_training/llm_be
 - Example result
 
 ```bash
-JobID,System,Version,Queue,JobTime,Model,ModelSize,Dataset,Nodes,Devices,DataParallel,IPU/replica,GlobalBatchSize,Time/iteration(s),Tokens/second,Energy/Device(Wh)
-13011841,GC200,2024.01,dc-ipu,00:40:00,GPT,117M,Synthetic,1,4,1,4,2048,11.17,183.37,[19.25481377957927, 19.965746845867898, 20.331749628523987, 20.657090717011027]
+JobID,System,Version,Queue,JobTime,Runtime(min),Model,ModelSize,Dataset,Nodes,Devices,GlobalBatchSize,PipelineParallel,TensorParallel,DataParallel,Iterations,Time/iteration(s),Tokens/second,Avg_TFLOPs/GPU,EnergyFile
+13057195,MI250,2024.01,dc-mi200,00:06:00,2,GPT,800M,OSCAR,2,16,64,1,1,16,120,0.83,158170.57,62.01,/p/project1/cjsc/nassyr1/SourceCode/git/CARAML/llm_training/llm_benchmark_nvidia_amd_run/000019/000002_combine_energy/work/combined_energy.csv
 
-JobID,System,Version,Queue,JobTime,Runtime(min),Model,ModelSize,Dataset,Nodes,Devices,GlobalBatchSize,PipelineParallel,TensorParallel,DataParallel,Iterations,Time/iteration(s),Tokens/second,Avg_TFLOPs/GPU,Energy/Device(Wh)
-3914,Jedi,2024.01,all,00:34:00,30,GPT,800M,OSCAR,1,4,2048,1,1,4,25,26.52,158152.80,321.65,[536.957653, 543.789541, 521.937084, 530.451145]
+JobID,System,Version,Queue,JobTime,Model,ModelSize,Dataset,Nodes,Devices,DataParallel,IPU/replica,GlobalBatchSize,Time/iteration(s),Tokens/second,EnergyFile
+13011841,GC200,2024.01,dc-ipu,00:40:00,GPT,117M,Synthetic,1,4,1,4,2048,11.17,183.37,/p/project1/cjsc/nassyr1/SourceCode/git/CARAML/llm_training/llm_benchmark_ipu_run/000003/000002_combine_energy/work/combined_energy.csv
+
+JobID,System,Version,Queue,JobTime,Runtime(min),Model,ModelSize,Dataset,Nodes,Devices,GlobalBatchSize,PipelineParallel,TensorParallel,DataParallel,Iterations,Time/iteration(s),Tokens/second,Avg_TFLOPs/GPU,EnergyFile
+3914,Jedi,2024.01,all,00:34:00,30,GPT,800M,OSCAR,1,4,2048,1,1,4,25,26.52,158152.80,321.65,/p/project1/cjsc/nassyr1/SourceCode/git/CARAML/llm_training/llm_benchmark_nvidia_amd_run/000025/000002_combine_energy/work/combined_energy.csv
 ```
