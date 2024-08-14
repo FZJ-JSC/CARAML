@@ -9,6 +9,10 @@ export ROOT_DIR=$BENCH_DIR/..
 export CUDA_VISIBLE_DEVICES=0
 export ROCM_VISIBLE_DEVICES=0
 
+
+NVIDIA_X86_ACCELERATORS=(A100 H100 WAIH100)
+NVIDIA_ARM_ACCELERATORS=(Jedi GH200)
+
 PYTORCH_CONTAINER_FILE_NVIDIA=$ROOT_DIR/containers/ngc2406_pytorch24_cuda125_nccl2215_py310.sif
 PYTORCH_CONTAINER_FILE_GH=$ROOT_DIR/containers/ngc2402_pytorch23_cuda123_nccl219_py310_arm.sif
 PYTORCH_CONTAINER_FILE_GC200=$ROOT_DIR/containers/ipu_pytorch20_poplar33_py38.sif
@@ -19,6 +23,10 @@ PYTORCH_PACKAGES_GC200=$BENCH_DIR/ipu_torch_packages
 PYTORCH_PACKAGES_FILE_GC200=$BENCH_DIR/ipu_torch_packages_installed
 PYTORCH_PACKAGES_MI250=$BENCH_DIR/amd_torch_packages
 PYTORCH_PACKAGES_FILE_MI250=$BENCH_DIR/amd_torch_packages_installed
+PYTORCH_PACKAGES_NVIDIA=$BENCH_DIR/nvidia_torch_packages
+PYTORCH_PACKAGES_FILE_NVIDIA=$BENCH_DIR/nvidia_torch_packages_installed
+PYTORCH_PACKAGES_GH=$BENCH_DIR/gh_torch_packages
+PYTORCH_PACKAGES_FILE_GH=$BENCH_DIR/gh_torch_packages_installed
 
 if ! [ -d "$ROOT_DIR/containers" ]; then
     mkdir -p "$ROOT_DIR/containers"
@@ -96,6 +104,30 @@ elif ! [ -f $PYTORCH_PACKAGES_FILE_MI250 ] && [ "$ACCELERATOR" = "MI250" ]; then
                     >&2
     touch $PYTORCH_PACKAGES_FILE_MI250
     echo "Done building additional packages for $ACCELERATOR in $PYTORCH_PACKAGES_MI250 " >&2
+elif ! [ -f $PYTORCH_PACKAGES_FILE_NVIDIA ] && [[ " ${NVIDIA_X86_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
+    mkdir -p $PYTORCH_PACKAGES_NVIDIA
+    export PIP_USER=0 
+    apptainer exec --cleanenv $PYTORCH_CONTAINER_FILE_NVIDIA \
+                    python -m pip install \
+                    --prefix=$PYTORCH_PACKAGES_NVIDIA \
+                    --ignore-installed --no-deps \
+                    --no-cache-dir \
+                    -r $BENCH_DIR/nvidia_torch_requirements.txt \
+                    >&2
+    touch $PYTORCH_PACKAGES_FILE_NVIDIA
+    echo "Done building additional packages for $ACCELERATOR in $PYTORCH_PACKAGES_NVIDIA " >&2
+elif ! [ -f $PYTORCH_PACKAGES_FILE_GH ] && [[ " ${NVIDIA_ARM_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
+    mkdir -p $PYTORCH_PACKAGES_GH
+    export PIP_USER=0 
+    apptainer exec --cleanenv $PYTORCH_CONTAINER_FILE_GH \
+                    python -m pip install \
+                    --prefix=$PYTORCH_PACKAGES_GH \
+                    --ignore-installed --no-deps \
+                    --no-cache-dir \
+                    -r $BENCH_DIR/gh_torch_requirements.txt \
+                    >&2
+    touch $PYTORCH_PACKAGES_FILE_GH
+    echo "Done building additional packages for $ACCELERATOR in $PYTORCH_PACKAGES_GH " >&2
 else
     echo "No additional packages required for $ACCELERATOR" >&2
 fi

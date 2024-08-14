@@ -7,6 +7,9 @@ if [ "x$BENCH_DIR" = "x" ]; then
     exit 1
 fi
 
+NVIDIA_X86_ACCELERATORS=(A100 H100 WAIH100)
+NVIDIA_ARM_ACCELERATORS=(Jedi GH200)
+
 DONE_FILE=$BENCH_DIR/llm_nvidia_build_done
 PATCH_APPLIED=$BENCH_DIR/megatron_patch_applied
 
@@ -20,6 +23,20 @@ export CUDA_VISIBLE_DEVICES=0
 export MAX_JOBS="${SLURM_CPUS_PER_TASK:-4}"
 
 cd $BENCH_DIR
+
+
+echo "ACCELERATOR=$ACCELERATOR"
+
+if ! [ -f "$BENCH_DIR"/nvidia_torch_wrap.sh ] && [[ " ${NVIDIA_X86_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
+    echo "creating NVIDIA X86 wrapper"
+    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/nvidia_torch_packages/local/lib/python3.10/dist-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/nvidia_torch_wrap.sh
+    chmod u+rwx "$BENCH_DIR"/nvidia_torch_wrap.sh
+elif ! [ -f "$BENCH_DIR"/gh_torch_wrap.sh ] && [[ " ${NVIDIA_ARM_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
+    echo "creating NVIDIA ARM wrapper"
+    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/gh_torch_packages/local/lib/python3.10/dist-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/gh_torch_wrap.sh
+    chmod u+rwx "$BENCH_DIR"/gh_torch_wrap.sh
+fi
+
 # Clone Megatron-LM
 if ! [ -d "Megatron-LM" ]; then
    git clone https://github.com/NVIDIA/Megatron-LM.git Megatron-LM
