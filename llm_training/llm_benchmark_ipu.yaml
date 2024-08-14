@@ -213,7 +213,7 @@ analyser:
           {use: efile_patterns, _: stdout}
       - step: benchmark
         file:
-          {use: perf_patterns, _: job.out}
+          {use: perf_patterns, _: job.err}
 
 result:
     use: analyse
@@ -242,7 +242,7 @@ result:
         # - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
         # - {title: "Energy/Device(Wh)", format: ".2f", _: energy_average}
         # - {title: "Energy/Device(Wh)",  _: energy_list_reimann}
-        - {title: "Energy file",  _: energy_file_path}
+        - {title: "EnergyFile",  _: energy_file_path}
 step:
     - name: wrap
       tag: "!container"
