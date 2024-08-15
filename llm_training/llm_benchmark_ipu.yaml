@@ -121,7 +121,7 @@ parameterset:
         _: |
            echo "export BENCH_DIR=${jube_benchmark_home}"
            echo "export ACCELERATOR=${system_name}"
-           echo "export ENERGY_PATH=${jube_benchmark_home}/${jube_wp_relpath}/${system_name}_power.csv"
+           echo "export ENERGY_PATH=${system_name}_power.csv"
       - {name: measurement,  _: $variable_export}
       - name: container_env
         mode: text
