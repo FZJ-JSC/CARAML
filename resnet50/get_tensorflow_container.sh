@@ -7,6 +7,9 @@ fi
 
 export ROOT_DIR=$BENCH_DIR/..
 
+NVIDIA_X86_ACCELERATORS=(A100 H100 WAIH100)
+NVIDIA_ARM_ACCELERATORS=(Jedi GH200)
+
 TENSORFLOW_CONTAINER_FILE_NVIDIA=$ROOT_DIR/containers/ngc2301_tf115_cuda1201_nccl2165_py38.sif
 TENSORFLOW_CONTAINER_FILE_GH=$ROOT_DIR/containers/ngc2301_tf115_cuda1201_nccl2165_py38_arm.sif
 TENSORFLOW_CONTAINER_FILE_MI250=$ROOT_DIR/containers/amd_tf27_rocm50_py39-dev.sif
@@ -15,8 +18,12 @@ TENSORFLOW_CONTAINER_FILE_DONE=$BENCH_DIR/tensorflow_container_done
 
 TENSORFLOW_PACKAGES_MI250=$BENCH_DIR/amd_tensorflow_packages
 TENSORFLOW_PACKAGES_GC200=$BENCH_DIR/ipu_tensorflow_packages
+TENSORFLOW_PACKAGES_NVIDIA=$BENCH_DIR/nvidia_tensorflow_packages
+TENSORFLOW_PACKAGES_GH=$BENCH_DIR/gh_tensorflow_packages
 TENSORFLOW_PACKAGES_FILE_MI250=$BENCH_DIR/amd_tensorflow_packages_installed
 TENSORFLOW_PACKAGES_FILE_GC200=$BENCH_DIR/ipu_tensorflow_packages_installed
+TENSORFLOW_PACKAGES_FILE_NVIDIA=$BENCH_DIR/nvidia_tensorflow_packages_installed
+TENSORFLOW_PACKAGES_FILE_GH=$BENCH_DIR/gh_tensorflow_packages_installed
 
 
 if ! [ -d "$ROOT_DIR/containers" ]; then
@@ -98,6 +105,40 @@ elif ! [ -f $TENSORFLOW_PACKAGES_FILE_GC200 ] && [ "$ACCELERATOR" = "GC200" ]; t
                      >&2
     touch $TENSORFLOW_PACKAGES_FILE_GC200
     echo "Done building additional packages for $ACCELERATOR in $TENSORFLOW_PACKAGES_GC200" >&2
+
+elif ! [ -f $TENSORFLOW_PACKAGES_FILE_NVIDIA ] && [[ " ${NVIDIA_X86_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
+    mkdir -p $TENSORFLOW_PACKAGES_NVIDIA
+    apptainer exec $TENSORFLOW_CONTAINER_FILE_NVIDIA \
+                    python -m pip install \
+                    --upgrade pip setuptools distlib \
+                    >&2 
+    export PIP_USER=0 
+    apptainer exec $TENSORFLOW_CONTAINER_FILE_NVIDIA \
+                    python -m pip install \
+                    --prefix=$TENSORFLOW_PACKAGES_NVIDIA \
+                    --ignore-installed --no-deps \
+                    --no-cache-dir \
+                    -r $BENCH_DIR/nvidia_tensorflow_requirements.txt\
+                     >&2
+    touch $TENSORFLOW_PACKAGES_FILE_NVIDIA
+    echo "Done building additional packages for $ACCELERATOR in $TENSORFLOW_PACKAGES_NVIDIA" >&2
+
+elif ! [ -f $TENSORFLOW_PACKAGES_FILE_GH ] && [[ " ${NVIDIA_ARM_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
+    mkdir -p $TENSORFLOW_PACKAGES_GH
+    apptainer exec $TENSORFLOW_CONTAINER_FILE_GH \
+                    python -m pip install \
+                    --upgrade pip setuptools distlib \
+                    >&2 
+    export PIP_USER=0 
+    apptainer exec $TENSORFLOW_CONTAINER_FILE_GH \
+                    python -m pip install \
+                    --prefix=$TENSORFLOW_PACKAGES_GH \
+                    --ignore-installed --no-deps \
+                    --no-cache-dir \
+                    -r $BENCH_DIR/nvidia_tensorflow_requirements.txt\
+                     >&2
+    touch $TENSORFLOW_PACKAGES_FILE_GH
+    echo "Done building additional packages for $ACCELERATOR in $TENSORFLOW_PACKAGES_GH" >&2
 
 else
     echo "No additional packages required for $ACCELERATOR" >&2

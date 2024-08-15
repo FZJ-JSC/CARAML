@@ -109,7 +109,17 @@ Set the required `system` and `model` parameters and the path to downloaded Imag
 
     `A100` can be replaced with `H100`, `WAIH100`, `GH200`, `Jedi`, `MI250` and `GC200` for the respective systems.
 
-- After the benchmark has been executed, to get the result do
+- After the benchmark has been executed, use `jube continue` to postprocess results
+    ```bash
+   jube continue resnet50/resnet50_benchmark_run -i last
+   ```
+    OR
+
+   ```bash
+   jube continue resnet50/resnet50_benchmark_run -i last
+   ```
+
+- After the postprocessing, to get the result do
    ```bash
    jube result resnet50/resnet50_benchmark_run -i last
    ```

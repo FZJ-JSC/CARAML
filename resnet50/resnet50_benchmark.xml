@@ -203,11 +203,11 @@
       <parameter name="xla" separator="!">export TF_XLA_FLAGS='--tf_xla_auto_jit=2'</parameter>
       <parameter name="packages" separator="!" mode="python">
       {
-        "Jedi": "",
-        "GH200": "",
-        "WAIH100": "",
-        "H100": "" ,
-        "A100": "",
+        "Jedi": "$jube_benchmark_home/gh_tensorflow_packages/local/lib/python3.10/dist-packages",
+        "GH200": "$jube_benchmark_home/gh_tensorflow_packages/local/lib/python3.10/dist-packages",
+        "WAIH100": "$jube_benchmark_home/nvidia_tensorflow_packages/local/lib/python3.10/dist-packages",
+        "H100": "$jube_benchmark_home/nvidia_tensorflow_packages/local/lib/python3.10/dist-packages" ,
+        "A100": "$jube_benchmark_home/nvidia_tensorflow_packages/local/lib/python3.10/dist-packages",
         <!-- amd_requirements.txt -->
         "MI250": "$jube_benchmark_home/amd_tensorflow_packages/lib/python3.9/site-packages",
         <!-- ipu_requirements.txt -->
@@ -215,11 +215,11 @@
       }["${system_name}"]</parameter>
       <parameter name="load_modules" separator="!" tag="!container" mode="python">
       {
-        "Jedi":    "${cuda_devices};${accelerator}; ${bench_path}",
-        "GH200":   "${cuda_devices};${accelerator}; ${bench_path}",
-        "WAIH100": "${cuda_devices};${accelerator}; ${bench_path}",
-        "H100":    "${cuda_devices};${accelerator}; ${bench_path}" ,
-        "A100":    "${cuda_devices};${accelerator}; ${bench_path}",
+        "Jedi":    "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}",
+        "GH200":   "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}",
+        "WAIH100": "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}",
+        "H100":    "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}" ,
+        "A100":    "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}",
         "MI250": "${xla}; ${rocm_devices}; ${python_path};${accelerator}; ${bench_path}",
         "GC200": "${ipu_log_flag}; ${ipu_cache_path}; ${accelerator}; ${bench_path}"
       }["${system_name}"]</parameter>
@@ -237,23 +237,23 @@
       <parameter name="folder" tag="GC200">$jube_benchmark_home/$jube_wp_relpath/graphcore_benchmarks/vision/cnns/tensorflow2</parameter>
       <parameter name="args_starter" separator="!" tag="!container" mode="python">
       {
-        "Jedi": " --cpu_bind=socket,v --mpi=pmi2 apptainer exec --bind=${folder},${data_dir} --nv ${singularity_file} ",
-        "GH200": "--cpu_bind=socket,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} --nv ${singularity_file}",
-        "WAIH100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} --nv ${singularity_file} ",
-        "H100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} --nv ${singularity_file}" ,
-        "A100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} --nv ${singularity_file} ",
-        "MI250": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} ${singularity_file}",
-        "GC200": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} ${singularity_file} ${jube_benchmark_home}/ipu_tensorflow_wrap.sh"
+        "Jedi": " --cpu_bind=socket,v --mpi=pmi2 apptainer exec --bind=${folder},${data_dir} --nv ${singularity_file} ${jube_benchmark_home}/gh_tensorflow_wrap.sh ",
+        "GH200": "--cpu_bind=socket,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} --nv ${singularity_file} ${jube_benchmark_home}/gh_tensorflow_wrap.sh ",
+        "WAIH100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} --nv ${singularity_file} ${jube_benchmark_home}/nvidia_tensorflow_wrap.sh ",
+        "H100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} --nv ${singularity_file} ${jube_benchmark_home}/nvidia_tensorflow_wrap.sh " ,
+        "A100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} --nv ${singularity_file} ${jube_benchmark_home}/nvidia_tensorflow_wrap.sh ",
+        "MI250": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} ${singularity_file} ${jube_benchmark_home}/amd_tensorflow_wrap.sh ",
+        "GC200": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${folder},${data_dir} ${singularity_file} ${jube_benchmark_home}/ipu_tensorflow_wrap.sh "
       }["${system_name}"]</parameter>
     </parameterset>
 
 
     <fileset name="files" tag="!GC200">
-     <prepare>git clone -b master --recursive https://github.com/chelseajohn/tf_cnn_benchmarks.git benchmarks</prepare>
+     <prepare>git clone -b jpwr_integration --recursive https://github.com/chelseajohn/tf_cnn_benchmarks.git benchmarks</prepare>
     </fileset>
 
     <fileset name="files" tag="GC200">
-     <prepare>git clone -b master --recursive https://github.com/chelseajohn/examples.git graphcore_benchmarks</prepare>
+     <prepare>git clone -b jpwr_integration --recursive https://github.com/chelseajohn/examples.git graphcore_benchmarks</prepare>
     </fileset>
     
 
@@ -268,12 +268,15 @@
       <do done_file="$done_file"></do>
     </step>
 
-    <step name="wrap" tag="!container+GC200">
+    <step name="wrap" tag="!container">
       <use>systemInfo</use>
       <use>systemParameter</use>
       <use>environment</use>
       <do  mode="shell" tag="GC200+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/ipu_tensorflow_wrap.sh</do>
       <do  mode="shell" tag="GC200+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/ipu_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="(H100|A100|WAIH100)+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/nvidia_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="(GH200|Jedi)+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/gh_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="MI250+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/amd_tensorflow_wrap.sh</do>
       <do  mode="shell" tag="GC200"> chmod u+rwx ${jube_benchmark_home}/ipu_tensorflow_wrap.sh </do>
     </step>
 
@@ -301,7 +304,15 @@
       <use from="platform.xml">executesub</use>
       <do>$submit $submit_script</do>
       <do done_file="$done_file"></do>
-    </step>
+   </step>
+
+   <step name="combine_energy" tag="!container" depend="execute" iterations="1">
+      <use>files</use>
+      <use>systemInfo</use>
+      <use>systemParameter</use>
+      <do>module load GCC SciPy-bundle</do>
+      <do>python3 ${jube_benchmark_home}/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/execute/${system_name}_power.%d.energy.csv " $$(seq 0 $$(($nodes-1))))</do>
+   </step>>
 
     <patternset name="pattern">
       <pattern name="imagespersec" type="float" tag="!GC200">total images/sec: ${jube_pat_fp}</pattern>
@@ -315,6 +326,9 @@
       <!-- <pattern name="energy_average"  tag="GC200">Average-Energy-per-GPU: ${jube_pat_fp}</pattern> -->
       <pattern name="energy_list_reimann" type="str" >Energy-per-GPU-list integrated\(Wh\): (\[.*?\])</pattern>
       <pattern name="energy_list_counter" type="str" tag="MI250" >Energy-per-GPU-list from counter\(Wh\): (\[.*?\])</pattern>
+    </patternset>
+    <patternset name="efile_patterns">
+      <pattern name="energy_file_path" type="str" tag="MI250" >Writing combined energy DataFrame to (.*)</pattern>
     </patternset>
 
     <patternset name="jobnumber">
@@ -333,6 +347,9 @@
         <file>job.out</file>
         <file use="runtimepattern">job.err</file>
         <file use="jobnumber">stdout</file>
+      </analyse>
+      <analyse step="combine_energy">
+        <file use="efile_patterns">stdout</file>
       </analyse>
     </analyser>
 
