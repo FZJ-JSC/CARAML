@@ -8,13 +8,14 @@ if [ "x$BENCH_DIR" = "x" ]; then
 fi
 
 NVIDIA_X86_ACCELERATORS=(A100 H100 WAIH100)
-NVIDIA_ARM_ACCELERATORS=(Jedi GH200)
+NVIDIA_ARM_ACCELERATORS=(JEDI GH200)
 
 DONE_FILE=$BENCH_DIR/llm_nvidia_build_done
-PATCH_APPLIED=$BENCH_DIR/megatron_patch_applied
+PATCH_APPLIED=$BENCH_DIR/megatron_lm_patch_applied
 
 if [ -f $DONE_FILE ]; then
-    echo "$DONE_FILE exists, exiting" >&2
+    echo "$DONE_FILE exists" >&2
+    echo "To rebuild setup delete $DONE_FILE,exiting" >&2
     exit 0
 fi
 
@@ -27,14 +28,14 @@ cd $BENCH_DIR
 
 echo "ACCELERATOR=$ACCELERATOR"
 
-if ! [ -f "$BENCH_DIR"/nvidia_torch_wrap.sh ] && [[ " ${NVIDIA_X86_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
+if ! [ -f "$BENCH_DIR"/nvidia_x86_torch_wrap.sh ] && [[ " ${NVIDIA_X86_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
     echo "creating NVIDIA X86 wrapper"
-    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/nvidia_torch_packages/local/lib/python3.10/dist-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/nvidia_torch_wrap.sh
-    chmod u+rwx "$BENCH_DIR"/nvidia_torch_wrap.sh
-elif ! [ -f "$BENCH_DIR"/gh_torch_wrap.sh ] && [[ " ${NVIDIA_ARM_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
+    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/nvidia_x86_torch_packages/local/lib/python3.10/dist-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/nvidia_x86_torch_wrap.sh
+    chmod u+rwx "$BENCH_DIR"/nvidia_x86_torch_wrap.sh
+elif ! [ -f "$BENCH_DIR"/nvidia_arm_torch_wrap.sh ] && [[ " ${NVIDIA_ARM_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
     echo "creating NVIDIA ARM wrapper"
-    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/gh_torch_packages/local/lib/python3.10/dist-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/gh_torch_wrap.sh
-    chmod u+rwx "$BENCH_DIR"/gh_torch_wrap.sh
+    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/nvidia_arm_torch_packages/local/lib/python3.10/dist-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/nvidia_arm_torch_wrap.sh
+    chmod u+rwx "$BENCH_DIR"/nvidia_arm_torch_wrap.sh
 fi
 
 # Clone Megatron-LM
@@ -46,9 +47,6 @@ fi
 
 # Where the Megatron-LM code is stored
 MEGATRON_LM_REPO="$BENCH_DIR"/Megatron-LM
-[ "x$MEGATRON_LM_REPO" = x ] \
-    && echo 'Please set `MEGATRON_LM_REPO` in `llm_variables.bash`' && return 1 >&2
-
 cd "$MEGATRON_LM_REPO"
 # fixing the commit 
 git checkout f7727433293427bef04858f67b2889fe9b177d88 
@@ -63,10 +61,13 @@ fi
 if ! [ -f "fixed_torch_run.py" ]; then
   ln -sf "$BENCH_DIR"/aux/fixed_torch_run.py ./fixed_torch_run.py
 fi
-if ! [ -f "get_power_nvidia.py" ]; then
-  ln -sf "$BENCH_DIR"/aux/get_power_nvidia.py ./get_power_nvidia.py
-fi
+
+# Power script without jpwr
+# if ! [ -f "get_power_nvidia.py" ]; then
+#   ln -sf "$BENCH_DIR"/aux/get_power_nvidia.py ./get_power_nvidia.py
+# fi
+
 cd ..
 touch $DONE_FILE
 
-echo "LLM training benchmark setup done!" >&2
+echo "LLM training benchmark setup for NVIDIA done!" >&2

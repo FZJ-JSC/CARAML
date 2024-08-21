@@ -11,7 +11,8 @@ DONE_FILE=$BENCH_DIR/llm_amd_build_done
 PATCH_APPLIED=$BENCH_DIR/megatron_rocm_patch_applied
 
 if [ -f $DONE_FILE ]; then
-    echo "$DONE_FILE exists, exiting" >&2
+    echo "$DONE_FILE exists" >&2
+    echo "To rebuild setup delete $DONE_FILE,exiting" >&2
     exit 0
 fi
 
@@ -47,9 +48,12 @@ fi
 if ! [ -f "fixed_torch_run.py" ]; then
   ln -sf "$BENCH_DIR"/aux/fixed_torch_run.py ./fixed_torch_run.py
 fi
-if ! [ -f "get_power_rsmi.py" ]; then
-  ln -sf "$BENCH_DIR"/aux/get_power_rsmi.py ./get_power_rsmi.py
-fi
+
+# Power script without jpwr
+# if ! [ -f "get_power_rsmi.py" ]; then
+#   ln -sf "$BENCH_DIR"/aux/get_power_rsmi.py ./get_power_rsmi.py
+# fi
+
 cd ..
 touch $DONE_FILE
 

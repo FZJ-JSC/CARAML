@@ -59,7 +59,7 @@ comment: llm benchmark jube script for NVIDIA-A100,H100,GH200 and AMD-MI250
 parameterset:
   - name: systemInfo
     parameter:
-      - {name: system_name, type: str, tag: "Jedi",    _: "Jedi"}
+      - {name: system_name, type: str, tag: "JEDI",    _: "JEDI"}
       - {name: system_name, type: str, tag: "GH200",   _: "GH200"}
       - {name: system_name, type: str, tag: "WAIH100", _: "WAIH100"}
       - {name: system_name, type: str, tag: "H100",    _: "H100"}
@@ -87,7 +87,7 @@ parameterset:
       - {name: micro_batch_size,  type: int, mode: python, _: "[4,2,2][$modelidx]"}
       - {name: gas,               type: int, mode: python, _: "[1,64,64][$modelidx]"}
       # global_batch_size has to be divisible by dp_size*micro_batch_size*gas; 
-      - {name: global_batch_size, type: int, tag: "800M+!container", seperator: ",", _: "16"}
+      - {name: global_batch_size, type: int, tag: "800M+!container", seperator: ",", _: "32"}
       #16,32,64,128,256,512,1024,2048,4096
       - {name: global_batch_size, type: int, tag: "!800M", mode: python, 
          _: "int( $dp_size * $micro_batch_size * $gas)"}
@@ -96,7 +96,7 @@ parameterset:
       - {name: modelargs,             tag: "800M",  mode: text,       _: --fp16}
       - {name: modelargs,             tag: "13B",  mode: text,        _: --ffn-hidden-size 20480 --fp16}
       - {name: modelargs,             tag: "175B", mode: text,        _: --bf16}
-      - {name: megatron_repo,              tag: "Jedi|GH200|WAIH100|H100|A100", mode: text, _: Megatron-LM}
+      - {name: megatron_repo,              tag: "JEDI|GH200|WAIH100|H100|A100", mode: text, _: Megatron-LM}
       - {name: megatron_repo,              tag: "MI250",                        mode: text, _: Megatron-LM-ROCm}
       - name: optimizerargs
         mode: text
@@ -115,7 +115,7 @@ parameterset:
           --use-distributed-optimizer
       - name: additionalargs
         mode: text
-        tag: "Jedi|GH200|WAIH100|H100|A100"
+        tag: "JEDI|GH200|WAIH100|H100|A100"
         _: >
           --loss-scale-window 500 
           --hysteresis 2 
@@ -156,7 +156,7 @@ parameterset:
       - name: outputargs
         _: > 
           --log-interval 5
-          --save-interval 1500
+          --save-interval 200000
           --eval-interval 2000
           --eval-iters 15
           --tensorboard-dir $$TENSORBOARD_PATH
@@ -171,7 +171,7 @@ parameterset:
       - {name: account,         tag: "!WAIH100",          _: "zam"}
       - {name: account,         tag: "WAIH100",           _: "westai0005"}
       - {name: queue,           mode: python,             
-       _: "{'Jedi': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-wai','H100': 'dc-h100' ,'A100': 'dc-gpu', 'MI250': 'dc-mi200'}['${system_name}']"}
+       _: "{'JEDI': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-wai','H100': 'dc-h100' ,'A100': 'dc-gpu', 'MI250': 'dc-mi200'}['${system_name}']"}
       - {name: nodes,            type: int, tag: "container",   _: 1}
       - {name: nodes,            type: int, tag: "800M",   _: 1}
       - {name: nodes,            type: int, tag: "13B",    _: 44}
@@ -184,10 +184,10 @@ parameterset:
       - {name: taskspernode,     type: int,                _: 1}
       - {name: tasks,            type: int, mode: python, update_mode: step, _: "$taskspernode*$nodes"}
       - {name: threadspertask,  type: int, mode: python, tag: "!container" ,
-        _: "{'Jedi': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128', 'MI250': '48'}['${system_name}']"}
+        _: "{'JEDI': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128', 'MI250': '48'}['${system_name}']"}
       - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
-      - {name: timelimit,        tag: "container",         _: "01:30:00"}
-      - {name: timelimit,        tag: "!container",         _: "00:10:00"} # set time limit +4mins than exit_duration
+      - {name: timelimit,        tag: "container",         _: "02:00:00"}
+      - {name: timelimit,        tag: "!container",         _: "00:15:00"} # set time limit +4mins than exit_duration
       - {name: oottime,          type: int,                _: 120}
       - {name: ootsignal,        type: int,                _: 12}
       - {name: hint,                                      _: "nomultithread"}
@@ -199,7 +199,7 @@ parameterset:
       - {name: root_dir,            type: str,               _: "$jube_benchmark_home/.."}
       # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-02.html
       # nvcr.io/nvidia/pytorch:24.02-py3
-      - {name: singularity_file, type: str, tag: "Jedi|GH200",
+      - {name: singularity_file, type: str, tag: "JEDI|GH200",
          _: "$root_dir/containers/ngc2402_pytorch23_cuda123_nccl219_py310_arm.sif"}
       # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-06.html
       # nvcr.io/nvidia/pytorch:24.06-py3
@@ -219,19 +219,19 @@ parameterset:
         tag: "GH200|MI250"
         _: ""
       - name: rdzv_conf
-        tag: "!Jedi"
+        tag: "!JEDI"
         _: >
           --rdzv_conf=is_host=$(if ((SLURM_NODEID)); then echo False; else echo True; fi)
       - name: rdzv_conf
-        tag: "Jedi"
+        tag: "JEDI"
         _: >
           --rdzv_conf=is_host=True  
       - name: masteri
-        tag: "!Jedi"
+        tag: "!JEDI"
         _: |
           MASTER_ADDR="${MASTER_ADDR}i"
       - name: masteri
-        tag: "Jedi"
+        tag: "JEDI"
         _: ""
       - name: preprocess
         mode: text
@@ -380,22 +380,22 @@ parameterset:
     parameter:
       - name: args_starter
         mode: text
-        tag: "Jedi+!container"
+        tag: "JEDI+!container"
         separator: |
         _: |
-          --cpu_bind=v --mpi=pmi2 apptainer exec  --bind=${jube_benchmark_home} --nv ${singularity_file} ${jube_benchmark_home}/gh_torch_wrap.sh
+          --cpu_bind=v --mpi=pmi2 apptainer exec  --bind=${jube_benchmark_home} --nv ${singularity_file} ${jube_benchmark_home}/nvidia_arm_torch_wrap.sh
       - name: args_starter
         mode: text
-        tag: "!Jedi+!MI250+!container+!GH200"
+        tag: "!(JEDI|MI250|GH200|H100)+!container"
         separator: |
         _: |
-          --disable-dcgm --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home} --nv ${singularity_file} ${jube_benchmark_home}/nvidia_torch_wrap.sh
+          --disable-dcgm --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home} --nv ${singularity_file} ${jube_benchmark_home}/nvidia_x86_torch_wrap.sh
       - name: args_starter
         mode: text
-        tag: "GH200+!container"
+        tag: "(GH200|H100)+!container"
         separator: |
         _: |
-          --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home} --nv ${singularity_file} ${jube_benchmark_home}/gh_torch_wrap.sh
+          --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home} --nv ${singularity_file} ${jube_benchmark_home}/nvidia_arm_torch_wrap.sh
       - name: args_starter
         mode: text
         tag: "MI250+!container"
@@ -524,5 +524,5 @@ step:
         - systemParameter
       do:
         - module load GCC SciPy-bundle
-        - python3 ${jube_benchmark_home}/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$(($nodes-1))))
+        - python3 ${jube_benchmark_home}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$(($nodes-1))))
 

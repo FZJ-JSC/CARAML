@@ -222,7 +222,7 @@ index 3170ba62..9b9ee3c3 100644
 +        if args.use_flash_attn or args.masked_softmax_fusion:
 +            import scaled_upper_triang_masked_softmax_cuda
 +            import scaled_masked_softmax_cuda
-+            print(" Masked kernels ...")
++            print("Using masked kernels ...")
 +        return
 +    except ImportError:
 +        pass
