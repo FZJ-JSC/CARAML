@@ -70,7 +70,7 @@
   <benchmark name="tensorflow_benchmark" outpath="resnet50_benchmark_run">
     <parameterset name="systemInfo">
       <parameter name="system_version" mode="shell">echo 2024.01</parameter>
-      <parameter name="system_name" type="str" tag="Jedi">Jedi</parameter>
+      <parameter name="system_name" type="str" tag="JEDI">JEDI</parameter>
       <parameter name="system_name" type="str" tag="GH200">GH200</parameter>
       <parameter name="system_name" type="str" tag="WAIH100">WAIH100</parameter>
       <parameter name="system_name" type="str" tag="H100">H100</parameter>
@@ -80,21 +80,11 @@
     </parameterset>
 
     <parameterset name="systemParameter" init_with="platform.xml">
-      <parameter name="nodes" type="int" separator=";" tag="!container+!debug" mode="python">
+      <parameter name="nodes" type="int" separator=";" tag="!container" mode="python">
       { 
-        "Jedi": "1;2",
+        "JEDI": "1",
         "GH200": "1",
-        "WAIH100": "1;2",
-        "H100": "1" ,
-        "A100": "1;2",
-        "MI250": "1;2",
-        "GC200": "1"
-      }["${system_name}"]</parameter>
-      <parameter name="nodes" type="int" separator=";" tag="!container+debug" mode="python">
-      { 
-        "Jedi": "1",
-        "GH200": "1",
-        "WAIH100": "1",
+        "WAIH100": "2",
         "H100": "1" ,
         "A100": "1",
         "MI250": "1",
@@ -107,24 +97,16 @@
         "MI250": "1",
         "GC200": "1"
       }["${system_name}"]</parameter>
-      <parameter name="taskspernode" type="int" separator=";" tag="!container+!debug" mode="python">
+      <parameter name="taskspernode" type="int" separator=";" tag="!container" mode="python">
       {
-        "Jedi": "1;2;3;4",
+        "JEDI": "4",
         "GH200": "1",
-        "WAIH100": "1;2;3;4",
-        "H100": "1;2;3;4" ,
-        "A100": "1;2;3;4",
-        "MI250": "1;2;3;4;5;6;7;8",
-        "GC200": "1"
-      }["${system_name}"]</parameter>
-      <parameter name="taskspernode" type="int" separator=";" tag="!container+debug" mode="python">
-      {
-        "Jedi": "1",
-        "GH200": "1",
-        "WAIH100": "1",
-        "H100": "1" ,
-        "A100": "1",
-        "MI250": "1",
+        "WAIH100": "4",
+        "H100": "4" ,
+        "A100": "4",
+        <!-- 1;2;3;4 -->
+        "MI250": "8",
+        <!-- 1;2;3;4;5;6;7; -->
         "GC200": "1"
       }["${system_name}"]</parameter>
       <parameter name="taskspernode" type="int" separator=";" tag="container+(H100|GH200|MI250|GC200)" mode="python">
@@ -136,9 +118,9 @@
       }["${system_name}"]</parameter>
       <parameter name="threadspertask" type="int" tag="!container" mode="python">
       {
-        "Jedi": "72",
+        "JEDI": "72",
         "GH200": "72",
-        "WAIH100": "18",
+        "WAIH100": "16",
         "H100": "4" ,
         "A100": "4",
         "MI250": "4",
@@ -147,7 +129,7 @@
       <parameter name="threadspertask" type="int" tag="container" mode="python">4</parameter>
       <parameter name="queue" mode="python">
       {
-        "Jedi": "all",
+        "JEDI": "all",
         "GH200": "dc-gh",
         "WAIH100": "dc-wai",
         "H100": "dc-h100" ,
@@ -157,15 +139,15 @@
       }["${system_name}"]</parameter>
       <parameter name="account" tag="!WAIH100">zam</parameter>
       <parameter name="account" tag="WAIH100">westai0005</parameter>
-      <parameter name="timelimit" tag="!GC100+!container">00:20:00</parameter>
-      <parameter name="timelimit" tag="GC100+!container">01:20:00</parameter>
-      <parameter name="timelimit" tag="container+(H100|GH200|MI250|GC200)">01:20:00</parameter>
+      <parameter name="timelimit" tag="!GC200+!container">00:20:00</parameter>
+      <parameter name="timelimit" tag="GC200+!container">01:20:00</parameter>
+      <parameter name="timelimit" tag="(H100|GH200|MI250|GC200)+container">01:20:00</parameter>
       <!-- When using Horovod ntasks=hvd_size=num_workers; there can be only one gpu per worker; hence num_gpus=1 -->
       <parameter name="gpus" type="int" separator=";">1</parameter>
       <parameter name="singularity_file" mode="python">
       { 
         <!-- https://docs.nvidia.com/deeplearning/frameworks/tensorflow-release-notes/rel-23-01.html -->
-        "Jedi": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38_arm.sif",
+        "JEDI": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38_arm.sif",
         "GH200": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38_arm.sif",
         <!-- https://docs.nvidia.com/deeplearning/frameworks/tensorflow-release-notes/rel-23-01.html -->
         "WAIH100": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38.sif",
@@ -179,7 +161,7 @@
       <!-- Benchmark file -->
       <parameter name="executable" tag="!GC200+!container">python ${folder}/tf_cnn_benchmarks.py</parameter>
       <parameter name="executable" tag="GC200+!container">python3 ${folder}/train.py</parameter>
-      <parameter name="executable" tag="container+(H100|GH200|MI250|GC200)">bash ${jube_benchmark_home}/get_tensorflow_container.sh</parameter>
+      <parameter name="executable" tag="(H100|GH200|MI250|GC200)+container">bash ${jube_benchmark_home}/get_tensorflow_container.sh</parameter>
       <!-- Benchmark file arguments -->
       <parameter name="args_exec" separator="!" tag="GC200+!container"> ${data_arg} --config=${tf_model}  --validation=false  --mlperf-logging --num-replicas=${replicas} --num-epochs=1 --global-batch-size=${global_batch_size} --micro-batch-size=${ipu_mbs} --dbn-replica-group-size=${dbn_replica}</parameter>
       <parameter name="args_exec" separator="!" tag="!GC200+!container+!synthetic">--num_gpus $gpus --model $tf_model --batch_size ${batch_size_per_device} --data_dir=${data_dir} --variable_update horovod --use_fp16=True</parameter>
@@ -191,24 +173,24 @@
       <parameter name="tf_model" tag="!GC200">resnet50_v2</parameter>
       <parameter name="tf_model" tag="GC200">resnet50_mlperf_pod4_bs20</parameter>
       <!-- Data Parallel for IPU -->
-      <parameter name="replicas" type="int" separator=";" tag="GC200+debug">1</parameter>
-      <parameter name="replicas" type="int" separator=";" tag="GC200+!debug">1;2;3;4</parameter>
+      <!-- 1;2;3;4 -->
+      <parameter name="replicas" type="int" separator=";" tag="GC200">4</parameter>
       <parameter name="total_devices" type="int" separator=";" mode="python" tag="!GC200">${nodes}*${taskspernode}</parameter>
       <parameter name="total_devices" type="int" separator=";" mode="python" tag="GC200">${replicas}</parameter>
       <!--Replace with path to ImageNet data -->
-      <parameter name="data_dir">/p/project1/cjsc/benchmark/imagenet-processed/</parameter>
+      <parameter name="data_dir" tag="!synthetic">/p/project1/cjsc/benchmark/imagenet-processed/</parameter>
       <parameter name="data_arg" tag="GC200+!synthetic">--dataset-path=${data_dir}</parameter>
       <parameter name="data_arg" tag="GC200+synthetic">--synthetic-data=ipu</parameter>
       <parameter name="dataset" tag="synthetic">ImageNet(synthetic)</parameter>
       <parameter name="dataset" tag="!synthetic">ImageNet</parameter>
-      <parameter name="global_batch_size"  type="int" tag="debug"  separator=";">16</parameter>
-      <parameter name="global_batch_size"  type="int" tag="!debug"  separator=";">16;32;64;128;256;512;1024;2048;4096</parameter>
+      <!-- 16;32;64;128;256;512;1024;2048;4096 -->
+      <parameter name="global_batch_size"  type="int" separator=";">64</parameter>
       <parameter name="dbn_replica" type="int" separator=";" tag="GC200">${replicas}</parameter>
       <parameter name="batch_size_per_device"  type="int" separator=";" mode="python" tag="!GC200">int(${global_batch_size}/${total_devices})</parameter>
       <parameter name="batch_size_per_device"  type="int" separator=";" mode="python" tag="GC200">int(${global_batch_size}/${replicas})</parameter>
       <!-- For IPU make sure the global batch size = replicas*mbs*gradient_accumulation_count -->
       <!-- ref: https://github.com/chelseajohn/examples/blob/d6f1846182e0a6edad4b79898aa60b973fe8732e/vision/cnns/tensorflow2/batch_config.py#L30 -->
-      <parameter name="ipu_mbs" mode="python" tag ="GC200" type="int" separator="!">$batch_size_per_device  if ($global_batch_size == 16) or ($global_batch_size == 32 and $replicas == 4) else 16</parameter>
+      <parameter name="ipu_mbs" mode="python" type="int"  tag ="GC200" separator="!">$batch_size_per_device  if ($global_batch_size == 16) or ($global_batch_size == 32 and $replicas == 4) else 16</parameter>
     </parameterset>
 
     <parameterset name="environment">
@@ -217,19 +199,21 @@
       <parameter name="ipu_cache_path"  seperator="!">export TF_POPLAR_FLAGS='--executable_cache_path=$jube_benchmark_home/ipu_cache'</parameter>
       <parameter name="python_path">export PYTHONPATH=${packages}:$PYTHONPATH</parameter>
       <parameter name="bench_path">export BENCH_DIR=${jube_benchmark_home}</parameter>
-      <parameter name="data_path">export DATASETS_DIR=${data_dir}</parameter>
+      <parameter name="data_path" tag="!synthetic">export DATASETS_DIR=${data_dir}</parameter>
       <parameter name="mpi_modules">GCC OpenMPI</parameter>
       <parameter name="accelerator">export ACCELERATOR=$system_name</parameter>
       <parameter name="cuda_devices" separator="!">export CUDA_VISIBLE_DEVICES=0,1,2,3</parameter>
       <parameter name="rocm_devices" separator="!">export ROCM_VISIBLE_DEVICES=0,1,2,3,4,5,6,7</parameter>
       <parameter name="xla" separator="!">export TF_XLA_FLAGS='--tf_xla_auto_jit=2'</parameter>
       <parameter name="packages" separator="!" mode="python">
-      {
-        "Jedi": "$jube_benchmark_home/gh_tensorflow_packages/local/lib/python3.10/dist-packages",
-        "GH200": "$jube_benchmark_home/gh_tensorflow_packages/local/lib/python3.10/dist-packages",
-        "WAIH100": "$jube_benchmark_home/nvidia_tensorflow_packages/local/lib/python3.10/dist-packages",
-        "H100": "$jube_benchmark_home/nvidia_tensorflow_packages/local/lib/python3.10/dist-packages" ,
-        "A100": "$jube_benchmark_home/nvidia_tensorflow_packages/local/lib/python3.10/dist-packages",
+      { 
+        <!-- nvidia_arm_tensorflow_requirements.txt -->
+        "JEDI": "$jube_benchmark_home/nvidia_arm_tensorflow_packages/lib/python3.8/site-packages",
+        "GH200": "$jube_benchmark_home/nvidia_arm_tensorflow_packages/lib/python3.8/site-packages",
+        <!-- nvidia_x86_tensorflow_requirements.txt -->
+        "WAIH100": "$jube_benchmark_home/nvidia_x86_tensorflow_packages/lib/python3.8/site-packages",
+        "H100": "$jube_benchmark_home/nvidia_x86_tensorflow_packages/lib/python3.8/site-packages" ,
+        "A100": "$jube_benchmark_home/nvidia_x86_tensorflow_packages/lib/python3.8/site-packages",
         <!-- amd_requirements.txt -->
         "MI250": "$jube_benchmark_home/amd_tensorflow_packages/lib/python3.9/site-packages",
         <!-- ipu_requirements.txt -->
@@ -237,7 +221,7 @@
       }["${system_name}"]</parameter>
       <parameter name="load_modules" separator="!" tag="!container" mode="python">
       {
-        "Jedi":    "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}",
+        "JEDI":    "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}",
         "GH200":   "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}",
         "WAIH100": "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}",
         "H100":    "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}" ,
@@ -247,41 +231,41 @@
       }["${system_name}"]</parameter>
      <parameter name="load_modules" separator="!" tag="container" mode="python">
       {
-        "GH200": "${cuda_devices}; ${accelerator}; ${bench_path}",
-        "H100":  "${cuda_devices}; ${accelerator}; ${bench_path}" ,
-        "MI250": " ${rocm_devices};${accelerator}; ${bench_path}",
-        "GC200": " ${accelerator}; ${bench_path}"
+        "GH200": "${accelerator}; ${bench_path}",
+        "H100":  "${accelerator}; ${bench_path}" ,
+        "MI250": "${accelerator}; ${bench_path}",
+        "GC200": "${accelerator}; ${bench_path}"
       }["${system_name}"]</parameter>
     </parameterset>
 
     <parameterset name="executeset" init_with="platform.xml">
       <parameter name="folder" tag="!GC200">$jube_benchmark_home/$jube_wp_relpath/benchmarks/scripts/tf_cnn_benchmarks</parameter>
       <parameter name="folder" tag="GC200">$jube_benchmark_home/$jube_wp_relpath/graphcore_benchmarks/vision/cnns/tensorflow2</parameter>
-      <parameter name="bind" tag="!synthetic">${folder},${data_dir}</parameter>
-      <parameter name="bind" tag="synthetic">${folder}</parameter>
+      <parameter name="bind_dir" tag="!container+!synthetic" separator="!">$jube_benchmark_home,${folder},${data_dir}</parameter>
+      <parameter name="bind_dir" tag="!container+synthetic" separator="!">$jube_benchmark_home,${folder}</parameter>
       <parameter name="args_starter" separator="!" tag="!container" mode="python">
       {
-        "Jedi": " --cpu_bind=socket,v --mpi=pmi2 apptainer exec --bind=${bind} --nv ${singularity_file} ${jube_benchmark_home}/gh_tensorflow_wrap.sh ",
-        "GH200": "--cpu_bind=socket,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind} --nv ${singularity_file} ${jube_benchmark_home}/gh_tensorflow_wrap.sh ",
-        "WAIH100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind} --nv ${singularity_file} ${jube_benchmark_home}/nvidia_tensorflow_wrap.sh ",
-        "H100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind} --nv ${singularity_file} ${jube_benchmark_home}/nvidia_tensorflow_wrap.sh " ,
-        "A100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind} --nv ${singularity_file} ${jube_benchmark_home}/nvidia_tensorflow_wrap.sh ",
-        "MI250": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind} ${singularity_file} ${jube_benchmark_home}/amd_tensorflow_wrap.sh ",
-        "GC200": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind} ${singularity_file} ${jube_benchmark_home}/ipu_tensorflow_wrap.sh "
+        "JEDI": " --cpu_bind=socket,v --mpi=pmi2 apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh ",
+        "GH200": "--cpu_bind=socket,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh ",
+        "WAIH100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_tensorflow_wrap.sh ",
+        "H100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_tensorflow_wrap.sh " ,
+        "A100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_tensorflow_wrap.sh ",
+        "MI250": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/amd_tensorflow_wrap.sh ",
+        "GC200": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/ipu_tensorflow_wrap.sh "
       }["${system_name}"]</parameter>
     </parameterset>
 
 
     <fileset name="files" tag="!GC200">
-     <prepare>git clone -b jpwr_integration --recursive https://github.com/chelseajohn/tf_cnn_benchmarks.git benchmarks</prepare>
+     <prepare>git clone -b master --recursive https://github.com/chelseajohn/tf_cnn_benchmarks.git benchmarks</prepare>
     </fileset>
 
     <fileset name="files" tag="GC200">
-     <prepare>git clone -b jpwr_integration --recursive https://github.com/chelseajohn/examples.git graphcore_benchmarks</prepare>
+     <prepare>git clone -b master --recursive https://github.com/chelseajohn/examples.git graphcore_benchmarks</prepare>
     </fileset>
     
 
-    <step name="pull_container" tag="container+(H100|GH200|MI250|GC200)">
+    <step name="pull_container" tag="container+(H100|GH200|MI250|GC200)" iterations="1">
       <use>systemInfo</use>
       <use>systemParameter</use>
       <use>environment</use>
@@ -292,25 +276,7 @@
       <do done_file="$done_file"></do>
     </step>
 
-    <step name="wrap" tag="!container">
-      <use>systemInfo</use>
-      <use>systemParameter</use>
-      <use>environment</use>
-      <do  mode="shell" tag="GC200+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/ipu_tensorflow_wrap.sh</do>
-      <do  mode="shell" tag="(H100|A100|WAIH100)+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/nvidia_tensorflow_wrap.sh</do>
-      <do  mode="shell" tag="(GH200|Jedi)+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/gh_tensorflow_wrap.sh</do>
-      <do  mode="shell" tag="MI250+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/amd_tensorflow_wrap.sh</do>
-      <do  mode="shell" tag="GC200+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/ipu_tensorflow_wrap.sh</do>
-      <do  mode="shell" tag="(H100|A100|WAIH100)+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/nvidia_tensorflow_wrap.sh</do>
-      <do  mode="shell" tag="(GH200|Jedi)+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/gh_tensorflow_wrap.sh</do>
-      <do  mode="shell" tag="MI250+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/amd_tensorflow_wrap.sh</do>
-      <do  mode="shell" tag="GC200"> chmod u+rwx ${jube_benchmark_home}/ipu_tensorflow_wrap.sh </do>
-      <do  mode="shell" tag="(H100|A100|WAIH100)"> chmod u+rwx ${jube_benchmark_home}/nvidia_tensorflow_wrap.sh </do>
-      <do  mode="shell" tag="(GH200|Jedi)"> chmod u+rwx ${jube_benchmark_home}/gh_tensorflow_wrap.sh </do>
-      <do  mode="shell" tag="MI250"> chmod u+rwx ${jube_benchmark_home}/amd_tensorflow_wrap.sh </do>
-    </step>
-
-    <step name="execute" tag="!container" depend="wrap" iterations="1">
+    <step name="execute" tag="!container" iterations="1">
       <use>files</use>
       <use>systemInfo</use>
       <use>systemParameter</use>
@@ -319,6 +285,18 @@
       <use>executeset</use>
       <use from="platform.xml">jobfiles</use>
       <use from="platform.xml">executesub</use>
+      <do  mode="shell" tag="GC200+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/ipu_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="(H100|A100|WAIH100)+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="(GH200|JEDI)+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="MI250+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/amd_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="GC200+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/ipu_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="(H100|A100|WAIH100)+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="(GH200|JEDI)+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="MI250+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/amd_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="GC200"> chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/ipu_tensorflow_wrap.sh </do>
+      <do  mode="shell" tag="(H100|A100|WAIH100)"> chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_tensorflow_wrap.sh </do>
+      <do  mode="shell" tag="(GH200|JEDI)"> chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh </do>
+      <do  mode="shell" tag="MI250"> chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/amd_tensorflow_wrap.sh </do>
       <do>$submit $submit_script</do>
       <do done_file="$done_file"></do>
     </step>
@@ -328,7 +306,7 @@
       <use>systemInfo</use>
       <use>systemParameter</use>
       <do>module load GCC SciPy-bundle</do>
-      <do>python3 ${jube_benchmark_home}/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/execute/${system_name}_power.%d.energy.csv " $$(seq 0 $$(($nodes-1))))</do>
+      <do>python3 ${jube_benchmark_home}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/execute/${system_name}_power.%d.energy.csv " $$(seq 0 $$(($nodes-1))))</do>
    </step>>
 
     <patternset name="pattern">
@@ -339,13 +317,13 @@
       <pattern name="compilation_time" type="float" unit="s" tag="GC200">logging_callback:Compilation Time ${jube_pat_fp}</pattern>
       <!-- Assuming 90 epochs with 1,281,167 training samples of ImageNet, with the simple formula
       [ time_to_report_in_seconds ]  = [epochs] * [images] / [throughput in images/second] -->
-      <pattern name="throughput_in_time" type="float" mode="python" unit="s">(90 * 1281167 /$imagespersec)</pattern>
+      <!-- <pattern name="throughput_in_time" type="float" mode="python" unit="s">(90 * 1281167 /$imagespersec)</pattern> -->
       <!-- <pattern name="energy_average"  tag="GC200">Average-Energy-per-GPU: ${jube_pat_fp}</pattern> -->
       <!-- <pattern name="energy_list_reimann" type="str" >Energy-per-GPU-list integrated\(Wh\): (\[.*?\])</pattern> -->
       <!-- <pattern name="energy_list_counter" type="str" tag="MI250" >Energy-per-GPU-list from counter\(Wh\): (\[.*?\])</pattern> -->
     </patternset>
     <patternset name="efile_patterns">
-      <pattern name="energy_file_path" type="str" tag="MI250" >Writing combined energy DataFrame to (.*)</pattern>
+      <pattern name="energy_file_path" type="str">Writing combined energy DataFrame to (.*)</pattern>
     </patternset>
 
     <patternset name="jobnumber">
@@ -385,7 +363,7 @@
         <column title="Threads/Task">threadspertask</column>
         <column title="GlobalBatchSize">global_batch_size</column>
         <column title="BatchSize/Device">batch_size_per_device</column>
-        <column title="Images/second">imagespersec_avg</column>
+        <column title="Images/second" format=".2f">imagespersec_avg</column>
         <!-- <column format=".2f">throughput_in_time</column> -->
         <!-- <column title="Energy/Device(Wh)">energy_list_reimann</column> -->
         <!-- <column title="Energy_counter/Device(Wh)" tag="MI250">energy_list_counter</column> -->
@@ -409,7 +387,7 @@
         <column title="Threads/Task">threadspertask</column>
         <column title="GlobalBatchSize">global_batch_size</column>
         <column title="BatchSize/Device">batch_size_per_device</column>
-        <column title="Images/second">imagespersec_avg</column>
+        <column title="Images/second" format=".2f">imagespersec_avg</column>
         <!-- <column format=".2f">throughput_in_time</column> -->
         <!-- <column title="Energy/Device(Wh)">energy_list_reimann</column> -->
         <!-- <column title="Energy_counter/Device(Wh)" tag="MI250">energy_list_counter</column> -->
