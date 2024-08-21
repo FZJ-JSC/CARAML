@@ -14,7 +14,7 @@ index cebe085b..0465d8aa 100644
  from megatron.utils import report_memory
  from megatron.model.vision.knn_monitor import compute_feature_bank
  
-+accelerator_list = ["Jedi", "GH200", "H100", "WAIH100", "A100"]
++accelerator_list = ["JEDI", "GH200", "H100", "WAIH100", "A100"]
 +def num_floating_point_operations(args, batch_size):
 +    # Attention projection size.
 +    query_projection_size = args.kv_channels * args.num_attention_heads

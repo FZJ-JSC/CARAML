@@ -1,0 +1,1 @@
+jpwr[pynvml] @ git+https://github.com/FZJ-JSC/jpwr

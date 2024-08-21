@@ -294,4 +294,14 @@ step:
           done_file:  $ready_file
           error_file: $error_file
           _:          $submit $submit_script
+    - name: combine_energy
+      tag: "!container"
+      iterations: 1
+      depend: benchmark
+      use:
+        - systemInfo
+        - systemParameter
+      do:
+        - module load GCC SciPy-bundle
+        - python3 ${jube_benchmark_home}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$(($nodes-1))))
 
