@@ -67,3 +67,4 @@ urllib3==2.2.2
 wandb==0.12.8
 zipp==3.19.2
 jpwr @ git+https://github.com/FZJ-JSC/jpwr
+
