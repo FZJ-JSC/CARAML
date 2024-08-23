@@ -15,3 +15,5 @@ regex==2024.7.24
 safetensors==0.4.4
 tokenizers==0.19.1
 transformers==4.43.4
+jpwr @ git+https://github.com/FZJ-JSC/jpwr
+

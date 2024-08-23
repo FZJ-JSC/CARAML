@@ -210,7 +210,7 @@ index 8b218ba5..02a462a9 100644
  
  def _build_index_mappings(name, data_prefix, documents, sizes,
 diff --git a/megatron/initialize.py b/megatron/initialize.py
-index 3170ba62..9b9ee3c3 100644
+index 3170ba62..e50ef70f 100644
 --- a/megatron/initialize.py
 +++ b/megatron/initialize.py
 @@ -172,6 +172,16 @@ def _compile_dependencies():
@@ -302,7 +302,7 @@ index ee266175..a3489f49 100644
          # - Also, leverage state_dict() and load_state_dict() to
          #   recast preexisting per-param state tensors.
 diff --git a/megatron/training.py b/megatron/training.py
-index 468a6002..030deedd 100644
+index 468a6002..46be65dc 100644
 --- a/megatron/training.py
 +++ b/megatron/training.py
 @@ -18,6 +18,7 @@
@@ -433,42 +433,94 @@ index d115f815..c0696760 100644
 +
 +
 diff --git a/pretrain_gpt.py b/pretrain_gpt.py
-index f01635b2..7c32e4f5 100644
+index f01635b2..6c3ac57e 100644
 --- a/pretrain_gpt.py
 +++ b/pretrain_gpt.py
-@@ -14,7 +14,8 @@
+@@ -14,7 +14,26 @@
  # limitations under the License.
  
  """Pretrain GPT"""
--
++import unicodedata
++import re
++def slugify(value, allow_unicode=False):
++    """
++    Taken from https://github.com/django/django/blob/master/django/utils/text.py
++    Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
++    dashes to single dashes. Remove characters that aren't alphanumerics,
++    underscores, or hyphens. Convert to lowercase. Also strip leading and
++    trailing whitespace, dashes, and underscores.
++    """
++    value = str(value)
++    if allow_unicode:
++        value = unicodedata.normalize('NFKC', value)
++    else:
++        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
++    value = re.sub(r'[^\w\s-]', '', value.lower())
++    return re.sub(r'[-\s]+', '-', value).strip('-_')
+ 
 +import os
 +import sys
  import torch
  from functools import partial
  from megatron import get_args
-@@ -154,7 +155,21 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
+@@ -154,7 +173,57 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
  
  
  if __name__ == "__main__":
--
++    from jpwr.ctxmgr import get_power
+ 
 -    pretrain(train_valid_test_datasets_provider, model_provider,
 -             ModelType.encoder_or_decoder,
 -             forward_step, args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
-+    if os.getenv("ACCELERATOR") == "MI250":
-+        from get_power_rsmi import  power_loop
-+        from get_power_rsmi import GetPower
-+        with GetPower() as training_scope:
-+            pretrain(train_valid_test_datasets_provider, model_provider,
-+                    ModelType.encoder_or_decoder,
-+                    forward_step, args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
-+
-+        power_file = os.getenv("ENERGY_PATH") 
-+        training_scope.df.to_csv(power_file)
-+        energy_int,energy_cnt = training_scope.energy()
-+        print_rank_0(f"Energy-per-GPU-list integrated(Wh): {energy_int}")
-+        print_rank_0(f"Energy-per-GPU-list from counter(Wh): {energy_cnt}")
++    methods = set()
++    if not torch.cuda.is_available():
++        print("Not running on GPU")
 +    else:
++        for i in range(torch.cuda.device_count()):
++            device_name = torch.cuda.get_device_name(i)
++            if "AMD" in device_name:
++                methods.add("rocm")
++            if "NVIDIA" in device_name:
++                methods.add("pynvml")
++            if "GH200" in device_name:
++                methods.add("gh")
++
++    power_methods = []
++    for m in methods:
++        if "rocm" == m:
++            from jpwr.gpu.rocm import power
++            power_methods.append(power())
++        if "pynvml" == m:
++            from jpwr.gpu.pynvml import power
++            power_methods.append(power())
++        if "gh" == m:
++            from jpwr.sys.gh import power
++            power_methods.append(power())
++
++
++    with get_power(power_methods, 100) as measured_scope:
 +        pretrain(train_valid_test_datasets_provider, model_provider,
-+                ModelType.encoder_or_decoder,
-+                forward_step, args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
-+        
++                 ModelType.encoder_or_decoder,
++                 forward_step, args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
++    energy_df, additional_data = measured_scope.energy()
++    import platform
++    nodename  = platform.node()
++    rankid    = int(os.getenv("RANK"))
++    power_file_base = os.getenv("ENERGY_PATH")
++    power_file = power_file_base.replace("csv", f"{rankid}.csv")
++    measured_scope.df["nodename"] = nodename
++    measured_scope.df["rank"] = rankid
++    if not os.path.exists(power_file):
++        measured_scope.df.to_csv(power_file)
++    energy_df["nodename"] = nodename
++    energy_df["rank"] = rankid
++    energy_file = power_file.replace("csv", f"energy.csv")
++    if not os.path.exists(energy_file):
++        energy_df.to_csv(energy_file)
++    print(f"Host: {nodename}")
++    print(f"Energy-per-GPU-list integrated(Wh): \n{energy_df.to_string()}")
++    for k,v in additional_data.items():
++        additional_path = power_file.replace("csv", f"{slugify(k)}.csv")
++        print(f"Writing {k} df to {additional_path}")
++        v.T.to_csv(additional_path)
++        print(f"Energy-per-GPU-list from {k}(Wh): {v.to_string()}")

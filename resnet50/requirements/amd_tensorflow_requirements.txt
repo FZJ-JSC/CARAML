@@ -19,3 +19,4 @@ termcolor==2.2.0
 tzdata==2024.1
 wrapt==1.14.1
 wheel==0.43.0
+jpwr @ git+https://github.com/FZJ-JSC/jpwr

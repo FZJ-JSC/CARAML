@@ -121,6 +121,7 @@ parameterset:
         _: |
            echo "export BENCH_DIR=${jube_benchmark_home}"
            echo "export ACCELERATOR=${system_name}"
+           echo "export ENERGY_PATH=${system_name}_power.csv"
       - {name: measurement,  _: $variable_export}
       - name: container_env
         mode: text
@@ -187,7 +188,7 @@ parameterset:
 
 fileset:
    - name: files
-     prepare: git clone -b master --recursive https://github.com/chelseajohn/examples.git graphcore_benchmarks
+     prepare: git clone -b jpwr_integration --recursive https://github.com/chelseajohn/examples.git graphcore_benchmarks
 
 patternset:
    - name: perf_patterns
@@ -199,15 +200,20 @@ patternset:
       - {name: tokens_per_second,  type: float, mode: python, _: "($global_batch_size/$step_time_last)"}
       - {name: throughput_in_time, type: float, mode: python, _: "(20000000/$tokens_per_second)"}
       # - {name: energy_average,         type: float,  _: "Average-Energy-per-GPU(Wh): ${jube_pat_fp}"}
-      - {name: energy_list_reimann,type: str,  _: "Energy-per-GPU-list integrated\\(Wh\\): (\\[.*?\\])"}
-
+      # - {name: energy_list_reimann,type: str,  _: "Energy-per-GPU-list integrated\\(Wh\\): (\\[.*?\\])"}
+   - name: efile_patterns
+     pattern:
+      - {name: energy_file_path, type: str, _: "Writing combined energy DataFrame to (.*)"}
 analyser:
-    name: analyse
+  - name: analyse
     reduce: false
-    use: perf_patterns
     analyse:
-        step: benchmark
-        file: job.err
+      - step: combine_energy
+        file:
+          {use: efile_patterns, _: stdout}
+      - step: benchmark
+        file:
+          {use: perf_patterns, _: job.err}
 
 result:
     use: analyse
@@ -235,7 +241,8 @@ result:
         - {title: "Tokens/second",format: ".2f", _: step_throughput_last} 
         # - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
         # - {title: "Energy/Device(Wh)", format: ".2f", _: energy_average}
-        - {title: "Energy/Device(Wh)",  _: energy_list_reimann}
+        # - {title: "Energy/Device(Wh)",  _: energy_list_reimann}
+        - {title: "EnergyFile",  _: energy_file_path}
 step:
     - name: wrap
       tag: "!container"
@@ -301,7 +308,8 @@ step:
       use:
         - systemInfo
         - systemParameter
+        - modelParameter
       do:
         - module load GCC SciPy-bundle
-        - python3 ${jube_benchmark_home}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$(($nodes-1))))
+        - python3 ${jube_benchmark_home}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$((${tasks}-1))))
 

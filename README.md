@@ -122,6 +122,12 @@ Set the required `system` and `model` parameters and the path to downloaded Imag
     ```bash
     JobID,System,Version,Queue,Runtime(s),Model,Dataset,Nodes,Devices,Tasks/Node,Threads/Task,GlobalBatchSize,BatchSize/Device,Images/second,EnergyFile
     13077565,MI250,2024.01,dc-mi200,54.71,resnet50_v2,ImageNet,1,8,8,4,64,8,2107.00,CARAML/resnet50/resnet50_benchmark_run/000004/000002_combine_energy/work/combined_energy.csv
+    
+    JobID,System,Version,Queue,Runtime(s),Model,Dataset,Nodes,Devices,Tasks/Node,Threads/Task,GlobalBatchSize,BatchSize/Device,Images/second,EnergyFile
+    13082568,GC200,2024.01,dc-ipu,1.0,resnet50_mlperf_pod4_bs20,ImageNet,1,4,1,12,32,8,3556.18,CARAML/resnet50/resnet50_benchmark_run/000000/000000_execute/work/GC200_power.0.energy.csv
+
+    JobID,System,Version,Queue,Runtime(s),Model,Dataset,Nodes,Devices,Tasks/Node,Threads/Task,GlobalBatchSize,BatchSize/Device,Images/second,EnergyFile
+    13080521,H100,2024.01,dc-h100,89.67,resnet50_v2,ImageNet,1,4,4,4,32,8,1994.69,CARAML/resnet50/resnet50_benchmark_run/000000/000001_combine_energy/work/combined_energy.csv
     ```
 ## LLM-Training
 Set the required `system` and `model` parameters  in [llm_benchmark_nvidia_amd.yaml](./llm_training/llm_benchmark_nvidia_amd.yaml)

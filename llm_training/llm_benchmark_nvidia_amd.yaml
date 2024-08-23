@@ -92,7 +92,7 @@ parameterset:
       - {name: global_batch_size, type: int, tag: "!800M", mode: python, 
          _: "int( $dp_size * $micro_batch_size * $gas)"}
       - {name: sequence_length,  type: int,                _: 2048}
-      - {name: exit_duration,    type: int,                _: 5}
+      - {name: exit_duration,    type: int,                _: 30}
       - {name: modelargs,             tag: "800M",  mode: text,       _: --fp16}
       - {name: modelargs,             tag: "13B",  mode: text,        _: --ffn-hidden-size 20480 --fp16}
       - {name: modelargs,             tag: "175B", mode: text,        _: --bf16}
@@ -177,7 +177,7 @@ parameterset:
       - {name: nodes,            type: int, tag: "13B",    _: 44}
       - {name: nodes,            type: int, tag: "175B",   _: 16}
       - {name: gpus_per_node,    type: int, tag: "!GH200+!MI250+!container", _: 4}
-      - {name: gpus_per_node,    type: int, tag: "MI250+!container", _: 4}
+      - {name: gpus_per_node,    type: int, tag: "MI250+!container", _: 8}
       - {name: gpus_per_node,    type: int, tag: "(H100|MI250)+container", _: 1}
       - {name: gpus_per_node,    type: int, tag: "GH200",  _: 1}
       - {name: gres,                        tag: "!MI250", _: "gpu:$gpus_per_node"}
@@ -243,7 +243,7 @@ parameterset:
           echo "Submitted batch job $${SLURM_JOBID}"
           export SRUN_CPUS_PER_TASK=$${SLURM_CPUS_PER_TASK}
           export BENCH_DIR=$jube_benchmark_home
-          if [ "$systemname" = "MI250" ]; then
+          if [ "$system_name" = "MI250" ]; then
               export ROCM_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
           else
               export CUDA_VISIBLE_DEVICES=0,1,2,3
@@ -359,14 +359,14 @@ parameterset:
         tag: "!container+!MI250"
         update_mode: step
         _:
-          "{'benchmark': \"bash -c \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt &\\nwait\\ncd $$OLDDIR\"}['$jube_step_name']"
+          "{'benchmark': \" \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt & \\nwait\\ncd $$OLDDIR\", 'combine_energy': ''}['$jube_step_name']"
       - name: executable
         mode: python
         separator: ";"
         tag: "!container+MI250"
         update_mode: step
         _:
-          "{'benchmark': \" \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt & \\nwait \\ncd $$OLDDIR\"}['$jube_step_name']"
+          "{'benchmark': \" \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt & \\nwait\\ncd $$OLDDIR\", 'combine_energy': ''}['$jube_step_name']"
       - name: executable
         mode: python
         separator: "!"
@@ -415,18 +415,25 @@ patternset:
       - {name: elp_pat,    type: float, _: "elapsed time per iteration \\(s\\):\\s+$jube_pat_fp"}
       - {name: tokens_per_second,  type: float,  mode: python, _: "(1.0/$elp_pat_avg)*$global_batch_size*$sequence_length"}
       - {name: throughput_in_time, type: float, mode: python, _: "(20000000/$tokens_per_second)"}
-      - {name: energy_list_reimann,type: str,   _: "Energy-per-GPU-list integrated\\(Wh\\): (\\[.*?\\])"}
-      - {name: energy_list_counter,type: str, tag: "MI250",  _: "Energy-per-GPU-list from counter\\(Wh\\): (\\[.*?\\])"}
+      #- {name: energy_list_reimann,type: str,   _: "Energy-per-GPU-list integrated\\(Wh\\): (\\[.*?\\])"}
+      #- {name: energy_list_counter,type: str, tag: "MI250",  _: "Energy-per-GPU-list from counter\\(Wh\\): (\\[.*?\\])"}
+   - name: efile_patterns
+     pattern:
+      - {name: energy_file_path, type: str, _: "Writing combined energy DataFrame to (.*)"}
 analyser:
-    name: analyse
+  - name: analyse
     reduce: false
-    use: perf_patterns
     analyse:
-        step: benchmark
-        file: job.out
+      - step: combine_energy
+        file:
+          {use: efile_patterns, _: stdout}
+      - step: benchmark
+        file:
+          {use: perf_patterns, _: job.out}
 
 result:
-    use: analyse
+    use:
+      - analyse
     table:
       name: result
       style: csv
@@ -452,8 +459,9 @@ result:
         - {title: "Time/iteration(s)", format: ".2f", _: elp_pat_avg}
         - {title: "Tokens/second",format: ".2f", _: tokens_per_second}
         - {title: "Avg_TFLOPs/GPU", format: ".2f", _: tflops_pat_avg}
-        - {title: "Energy/Device(Wh)",  _: energy_list_reimann}
-        - {title: "Energy_counter/Device(Wh)", tag: "MI250",  _: energy_list_counter}
+        - {title: "EnergyFile",  _: energy_file_path}
+        # - {title: "Energy/Device(Wh)",  _: energy_list_reimann}
+        # - {title: "Energy_counter/Device(Wh)", tag: "MI250",  _: energy_list_counter}
         # - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
 
 step:
@@ -477,8 +485,11 @@ step:
     - name: setup_llm
       tag: "!MI250+!container"
       iterations: 1
+      use:
+        - systemInfo
       do:
         - export BENCH_DIR=$jube_benchmark_home
+        - export ACCELERATOR=$system_name
         - bash $BENCH_DIR/setup_nvidia_llm.sh
     - name: setup_llm
       tag: "MI250+!container"
@@ -511,7 +522,8 @@ step:
       use:
         - systemInfo
         - systemParameter
+        - modelParameter
       do:
         - module load GCC SciPy-bundle
-        - python3 ${jube_benchmark_home}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$(($nodes-1))))
+        - python3 ${jube_benchmark_home}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$((${total_devices}-1))))
 
