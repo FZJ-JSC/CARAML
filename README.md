@@ -34,11 +34,6 @@ CARAML currently offers two benchmarks written in `python`:
 
 To run the benchmark `JUBE` must be installed. Refer to [JUBE Installation Documentation](https://apps.fz-juelich.de/jsc/jube/docu/tutorial.html#installation). The containers are deployed using [Apptainer](https://apptainer.org/) images and SLURM on the accelerators.
 
-## JSC Specific Fixes
-In order to use PyTorch `torch run` API on JSC systems [fixed_torch_run.py](./llm_training/aux/fixed_torch_run.py) fix is required. The fix solves the issue defined [here](https://github.com/pytorch/pytorch/pull/81691).
-
-Additionally the `hostname` is appended with an `i` for allowing communication over InfiniBand as described [here](https://apps.fz-juelich.de/jsc/hps/juwels/known-issues.html#ip-connectivity-on-compute-nodes).
-
 ## Dataset
 
 For ResNet50, either download the `ImageNet LSVRC 2012` dataset from the [source](http://image-net.org/download) or [via kaggle](https://www.kaggle.com/c/imagenet-object-localization-challenge/data) (Disk space required: 144 GB) or use tag `synthetic` with `JUBE` to use synthetic data for benchmark.
@@ -51,7 +46,7 @@ For LLM training, a subset (790 samples, 10 MB) of the small version of the [OSC
 
 The `JUBE` file [resnet50_benchmark.xml](./resnet50/resnet50_benchmark.xml) sets up the enviroment by
 
-- Pulling TensorFlow containers and `pip` installing additional packages required for AMD and Graphcore using [get_tensorflow_container.sh](./resnet50/get_tensorflow_container.sh) file
+- Pulling TensorFlow containers and `pip` installing additional packages using [get_tensorflow_container.sh](./resnet50/get_tensorflow_container.sh) file
 - Cloning:
     - [tf_cnn_benchmarks](https://github.com/chelseajohn/tf_cnn_benchmarks) (forked version) for NVIDIA & AMD 
     - [examples](https://github.com/chelseajohn/examples) (forked version) for Graphcore
@@ -61,7 +56,7 @@ The performance is measured in terms of `images/sec`.
 ## LLM-Training
 
 The `JUBE` file [llm_benchmark_nvidia_amd.yaml](./llm_training/llm_benchmark_nvidia_amd.yaml) and [llm_benchmark_ipu.yaml](./llm_training/llm_benchmark_ipu.yaml) sets up the environent by
-- Pulling PyTorch containers and `pip` installing additional packages required for Graphcore and AMD using [get_pytorch_container.sh](./llm_training/get_pytorch_container.sh) file
+- Pulling PyTorch containers and `pip` installing additional packages using [get_pytorch_container.sh](./llm_training/get_pytorch_container.sh) file
 - Cloning:
     - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM.git) with commit: `f7727433293427bef04858f67b2889fe9b177d88` and applying [patch](./llm_training/aux/nvidia_energy_llm_fix.patch) using [setup_llm.sh](./llm_training/setup_llm.sh) file for NVIDIA,
     - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and applying [patch](./llm_training/aux/amd_energy_llm_fix.patch) using [setup_llm_amd.sh](./llm_training/setup_amd_llm.sh) file for AMD 
@@ -197,3 +192,8 @@ JobID,System,Version,Queue,JobTime,Model,ModelSize,Dataset,Nodes,Devices,DataPar
 JobID,System,Version,Queue,JobTime,Runtime(min),Model,ModelSize,Dataset,Nodes,Devices,GlobalBatchSize,PipelineParallel,TensorParallel,DataParallel,Iterations,Time/iteration(s),Tokens/second,Avg_TFLOPs/GPU,EnergyFile
 3914,JEDI,2024.01,all,00:34:00,30,GPT,800M,OSCAR,1,4,2048,1,1,4,25,26.52,158152.80,321.65,CARAML/llm_training/llm_benchmark_nvidia_amd_run/000025/000002_combine_energy/work/combined_energy.csv
 ```
+
+# JSC Specific Fixes
+In order to use PyTorch `torch run` API on JSC systems [fixed_torch_run.py](./llm_training/aux/fixed_torch_run.py) fix is required. The fix solves the issue defined [here](https://github.com/pytorch/pytorch/pull/81691).
+
+Additionally the `hostname` is appended with an `i` for allowing communication over InfiniBand as described [here](https://apps.fz-juelich.de/jsc/hps/juwels/known-issues.html#ip-connectivity-on-compute-nodes).
