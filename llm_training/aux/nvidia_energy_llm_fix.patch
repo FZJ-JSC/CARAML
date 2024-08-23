@@ -1,5 +1,5 @@
 diff --git a/megatron/training.py b/megatron/training.py
-index cebe085b..0465d8aa 100644
+index cebe085b..be272522 100644
 --- a/megatron/training.py
 +++ b/megatron/training.py
 @@ -5,6 +5,7 @@
@@ -204,14 +204,13 @@ index cebe085b..0465d8aa 100644
          if args.profile and \
             iteration == args.profile_step_end and \
 diff --git a/pretrain_gpt.py b/pretrain_gpt.py
-index f01635b2..7c32e4f5 100644
+index 09e0710a..7237b2ca 100644
 --- a/pretrain_gpt.py
 +++ b/pretrain_gpt.py
-@@ -14,7 +14,25 @@
+@@ -1,7 +1,25 @@
  # Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
  
  """Pretrain GPT"""
--
 +import unicodedata
 +import re
 +def slugify(value, allow_unicode=False):
@@ -229,23 +228,22 @@ index f01635b2..7c32e4f5 100644
 +        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
 +    value = re.sub(r'[^\w\s-]', '', value.lower())
 +    return re.sub(r'[-\s]+', '-', value).strip('-_')
-+
+ 
 +import sys
  import os
  import torch
  from functools import partial
-@@ -154,9 +155,60 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
+@@ -126,9 +144,59 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
  
  
  if __name__ == "__main__":
--
++    from jpwr.ctxmgr import get_power
+ 
 -    pretrain(train_valid_test_datasets_provider,
 -             model_provider,
 -             ModelType.encoder_or_decoder,
 -             forward_step,
 -             args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
-+    from jpwr.ctxmgr import get_power
-+
 +    methods = set()
 +    if not torch.cuda.is_available():
 +        print("Not running on GPU")

@@ -92,7 +92,7 @@ parameterset:
       - {name: global_batch_size, type: int, tag: "!800M", mode: python, 
          _: "int( $dp_size * $micro_batch_size * $gas)"}
       - {name: sequence_length,  type: int,                _: 2048}
-      - {name: exit_duration,    type: int,                _: 5}
+      - {name: exit_duration,    type: int,                _: 30}
       - {name: modelargs,             tag: "800M",  mode: text,       _: --fp16}
       - {name: modelargs,             tag: "13B",  mode: text,        _: --ffn-hidden-size 20480 --fp16}
       - {name: modelargs,             tag: "175B", mode: text,        _: --bf16}
@@ -522,7 +522,8 @@ step:
       use:
         - systemInfo
         - systemParameter
+        - modelParameter
       do:
         - module load GCC SciPy-bundle
-        - python3 ${jube_benchmark_home}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$(($total_devices-1))))
+        - python3 ${jube_benchmark_home}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$((${total_devices}-1))))
 

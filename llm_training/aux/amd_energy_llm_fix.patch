@@ -210,7 +210,7 @@ index 8b218ba5..02a462a9 100644
  
  def _build_index_mappings(name, data_prefix, documents, sizes,
 diff --git a/megatron/initialize.py b/megatron/initialize.py
-index 3170ba62..9b9ee3c3 100644
+index 3170ba62..e50ef70f 100644
 --- a/megatron/initialize.py
 +++ b/megatron/initialize.py
 @@ -172,6 +172,16 @@ def _compile_dependencies():
@@ -302,7 +302,7 @@ index ee266175..a3489f49 100644
          # - Also, leverage state_dict() and load_state_dict() to
          #   recast preexisting per-param state tensors.
 diff --git a/megatron/training.py b/megatron/training.py
-index 468a6002..030deedd 100644
+index 468a6002..46be65dc 100644
 --- a/megatron/training.py
 +++ b/megatron/training.py
 @@ -18,6 +18,7 @@
@@ -433,14 +433,13 @@ index d115f815..c0696760 100644
 +
 +
 diff --git a/pretrain_gpt.py b/pretrain_gpt.py
-index f01635b2..7c32e4f5 100644
+index f01635b2..6c3ac57e 100644
 --- a/pretrain_gpt.py
 +++ b/pretrain_gpt.py
 @@ -14,7 +14,26 @@
  # limitations under the License.
  
  """Pretrain GPT"""
--
 +import unicodedata
 +import re
 +def slugify(value, allow_unicode=False):
@@ -458,22 +457,21 @@ index f01635b2..7c32e4f5 100644
 +        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
 +    value = re.sub(r'[^\w\s-]', '', value.lower())
 +    return re.sub(r'[-\s]+', '-', value).strip('-_')
-+
+ 
 +import os
 +import sys
  import torch
  from functools import partial
  from megatron import get_args
-@@ -154,7 +155,58 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
+@@ -154,7 +173,57 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
  
  
  if __name__ == "__main__":
--
++    from jpwr.ctxmgr import get_power
+ 
 -    pretrain(train_valid_test_datasets_provider, model_provider,
 -             ModelType.encoder_or_decoder,
 -             forward_step, args_defaults={'tokenizer_type': 'GPT2BPETokenizer'})
-+    from jpwr.ctxmgr import get_power
-+
 +    methods = set()
 +    if not torch.cuda.is_available():
 +        print("Not running on GPU")
