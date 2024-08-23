@@ -507,8 +507,7 @@ index f01635b2..7c32e4f5 100644
 +    energy_df, additional_data = measured_scope.energy()
 +    import platform
 +    nodename  = platform.node()
-+    rankid    = int(os.getenv("SLURM_PROCID"))
-+    ranks     = int(os.getenv("SLURM_NTASKS"))
++    rankid    = int(os.getenv("RANK"))
 +    power_file_base = os.getenv("ENERGY_PATH")
 +    power_file = power_file_base.replace("csv", f"{rankid}.csv")
 +    measured_scope.df["nodename"] = nodename

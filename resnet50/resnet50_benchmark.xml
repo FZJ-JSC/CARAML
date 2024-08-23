@@ -306,7 +306,7 @@
       <use>systemInfo</use>
       <use>systemParameter</use>
       <do>module load GCC SciPy-bundle</do>
-      <do>python3 ${jube_benchmark_home}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/execute/${system_name}_power.%d.energy.csv " $$(seq 0 $$(($nodes-1))))</do>
+      <do>python3 ${jube_benchmark_home}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/execute/${system_name}_power.%d.energy.csv " $$(seq 0 $$(($total_devices-1))))</do>
    </step>>
 
     <patternset name="pattern">
