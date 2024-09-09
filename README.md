@@ -84,11 +84,11 @@ Set the required `system` and `model` parameters and the path to downloaded Imag
     ```bash
     jube run resnet50/resnet50_benchmark.xml --tag container GH200
     ```
-    - AMD
+    - AMD MI250
     ```bash
     jube run resnet50/resnet50_benchmark.xml --tag container MI250
     ```
-    - Graphcore
+    - Graphcore GC200
     ```bash
     jube run resnet50/resnet50_benchmark.xml --tag container GC200
     ```
