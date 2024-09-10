@@ -96,7 +96,7 @@ Set the required `system` and `model` parameters and the path to downloaded Imag
     ```bash
     jube run resnet50/resnet50_benchmark.xml --tag A100
     ```
-    OR with `synthetic data`
+    OR with synthetic data
 
     ```bash
     jube run resnet50/resnet50_benchmark.xml --tag A100 synthetic
@@ -151,7 +151,7 @@ for NVIDIA and AMD devices and in [llm_benchmark_ipu.yaml](./llm_training/llm_be
     ```bash
     jube run llm_training/llm_benchmark_nvidia_amd.yaml --tag 800M A100
     ```
-    `A100` can be replaced with `H100`, `WAIH100`, `GH200`, `JEDI` and `MI250` for the respective systems and `800M` can be replaced with `175B` and `13B` for systems with more node resources like `JEDI`, `H100`, `A100` and `MI250`.
+    `A100` can be replaced with `H100`, `WAIH100`, `GH200`, `JEDI` and `MI250` for the respective systems and `800M` can be replaced with `13B` and `175B` for systems with more node resources like `JEDI`, `H100`, `A100` and `MI250`.
 
 - To run the benchmark with defined configurations for `117M` GPT model on Graphcore with synthetic data  do
     ```bash
