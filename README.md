@@ -1,6 +1,6 @@
 # CARAML 
 
-**C**ompact **A**utomated **R**eproducible **A**ssessment of **M**achine **L**earning (**CARAML**)  is a benchmark to assess main stream Computer Vision and Natrual Language Processing work loads on novel accelerators. It is developed and tested on systems of Jülich Supercomputing Centre (JSC).
+**C**ompact **A**utomated **R**eproducible **A**ssessment of **M**achine **L**earning (**CARAML**)  is a benchmark to assess main stream Computer Vision and Natural Language Processing work loads on novel accelerators. It is developed and tested on systems of Jülich Supercomputing Centre (JSC).
 
 CARAML benchmark is automated and made compact with the help of [JUBE](https://apps.fz-juelich.de/jsc/jube/docu/index.html), a scripting based framekwork to easily create benchmark sets, run those sets on different computer systems and evaluate the results. Additionally, the benchmarks are supplemented with power/energy measuring feature using [jpwr](https://github.com/FZJ-JSC/jpwr).
 
