@@ -1,18 +1,18 @@
 # CARAML 
 
-**C**ompact **A**utomated **R**eproducible **A**ssessment of **M**achine **L**earning (**CARAML**)  is a benchmark to assess main stream Computer Vision and Natural Language Processing work loads on novel accelerators. It is developed and tested on systems of Jülich Supercomputing Centre (JSC).
+**C**ompact **A**utomated **R**eproducible **A**ssessment of **M**achine **L**earning (**CARAML**)  is a benchmark to assess main stream Computer Vision and Natural Language Processing workloads on novel accelerators. It is developed and tested on systems of Jülich Supercomputing Centre (JSC).
 
-CARAML benchmark is automated and made compact with the help of [JUBE](https://apps.fz-juelich.de/jsc/jube/docu/index.html), a scripting based framekwork to easily create benchmark sets, run those sets on different computer systems and evaluate the results. Additionally, the benchmarks are supplemented with power/energy measuring feature using [jpwr](https://github.com/FZJ-JSC/jpwr).
+CARAML benchmark is automated and made compact with the help of [JUBE](https://apps.fz-juelich.de/jsc/jube/docu/index.html), a scripting-based framework to easily create benchmark sets, run those sets on different computer systems and evaluate the results. Additionally, the benchmarks are supplemented with power/energy measurement feature using [jpwr](https://github.com/FZJ-JSC/jpwr).
 
 With the usage of `JUBE` CARAML provides easy and reproducible way to benchmark different systems and model configurations with minimal effort.
 
 ## Tested Accelerators:
 
-CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JEDI](https://apps.fz-juelich.de/jsc/hps/jedi/index.html#) and [WEST-AI Nodes](https://westai.de/services/hardware/). These include the  accelerators: 
+CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JEDI](https://apps.fz-juelich.de/jsc/hps/jedi/index.html#) and [WEST-AI Nodes](https://westai.de/services/hardware/). These include the accelerators: 
 
 - AMD MI200 node with 4 $\times$ MI250 GPUs (`tag: MI250`)
 - Graphcore IPU-POD4 M2000 with 4 $\times$ GC200 IPUs (`tag: GC200`)
-- NVIDIA Ampere node (SXM)with 4 $\times$ A100 GPUs (`tag: A100`)
+- NVIDIA Ampere node (SXM) with 4 $\times$ A100 GPUs (`tag: A100`)
 - NVIDIA Hopper node (PCIe) with 4 $\times$ H100 GPUs (`tag: H100`)
 - NVIDIA Hopper node (NVLink) with 4 $\times$ H100 GPUs (`tag: WAIH100`)
 - NVIDIA Grace-Hopper chip with 1 $\times$ GH200 GPU (`tag: GH200`)
@@ -21,12 +21,12 @@ CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-ju
 # Benchmark
 
 CARAML currently offers two benchmarks written in `python`:
-- Computer Vision: [ResNet50](./resnet50/) benchmark  implemented in TensorFlow curated from forked versions of 
+- Computer Vision: [ResNet50](./resnet50/) benchmark implemented in TensorFlow curated from forked versions of 
     - [tensorflow/benchmarks](https://github.com/tensorflow/benchmarks) for NVIDIA and AMD 
     - [graphcore/examples](https://github.com/graphcore/examples) for Graphcore
 
 - GPT Language Model: [LLM-training](./llm_training/) implemented in PyTorch curated from 
-    - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM.git) with commit: `f7727433293427bef04858f67b2889fe9b177d88` and [patch](./llm_training/aux/nvidia_energy_llm_fix.patch) applied  for NVIDIA
+    - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM.git) with commit: `f7727433293427bef04858f67b2889fe9b177d88` and [patch](./llm_training/aux/nvidia_energy_llm_fix.patch) applied for NVIDIA
     - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and [patch](./llm_training/aux/amd_energy_llm_fix.patch) applied for AMD 
     - [graphcore/examples](https://github.com/graphcore/examples) forked version for Graphcore
 
@@ -36,7 +36,7 @@ To run the benchmark `JUBE` must be installed. Refer to [JUBE Installation Docum
 
 ## Dataset
 
-For ResNet50, either download the `ImageNet LSVRC 2012` dataset from the [source](http://image-net.org/download) or [via kaggle](https://www.kaggle.com/c/imagenet-object-localization-challenge/data) (Disk space required: 144 GB) or use tag `synthetic` with `JUBE` to use synthetic data for benchmark.
+For ResNet50, either download the `ImageNet LSVRC 2012` dataset from the [source](http://image-net.org/download) or [via kaggle](https://www.kaggle.com/c/imagenet-object-localization-challenge/data) (disk space required: 144 GB) or use tag `synthetic` with `JUBE` to use synthetic data for benchmark.
 
 For LLM training, a subset (790 samples, 10 MB) of the small version of the [OSCAR](https://huggingface.co/bigscience/misc-test-data/resolve/main/stas/oscar-1GB.jsonl.xz) dataset that is pre-processed using [GPT-2 tokenizers](./llm_training/aux/tokenizers/) is provided in [llm_data](./llm_training/llm_data/).
 
@@ -44,7 +44,7 @@ For LLM training, a subset (790 samples, 10 MB) of the small version of the [OSC
 
 ## ResNet50
 
-The `JUBE` file [resnet50_benchmark.xml](./resnet50/resnet50_benchmark.xml) sets up the enviroment by
+The `JUBE` file [resnet50_benchmark.xml](./resnet50/resnet50_benchmark.xml) sets up the environment by
 
 - Pulling TensorFlow containers and `pip` installing additional packages using [get_tensorflow_container.sh](./resnet50/get_tensorflow_container.sh) file
 - Cloning:
@@ -55,11 +55,11 @@ The performance is measured in terms of `images/sec`.
 
 ## LLM-Training
 
-The `JUBE` file [llm_benchmark_nvidia_amd.yaml](./llm_training/llm_benchmark_nvidia_amd.yaml) and [llm_benchmark_ipu.yaml](./llm_training/llm_benchmark_ipu.yaml) sets up the environent by
+The `JUBE` file [llm_benchmark_nvidia_amd.yaml](./llm_training/llm_benchmark_nvidia_amd.yaml) and [llm_benchmark_ipu.yaml](./llm_training/llm_benchmark_ipu.yaml) sets up the environment by
 - Pulling PyTorch containers and `pip` installing additional packages using [get_pytorch_container.sh](./llm_training/get_pytorch_container.sh) file
 - Cloning:
-    - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM.git) with commit: `f7727433293427bef04858f67b2889fe9b177d88` and applying [patch](./llm_training/aux/nvidia_energy_llm_fix.patch) using [setup_llm.sh](./llm_training/setup_llm.sh) file for NVIDIA,
-    - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and applying [patch](./llm_training/aux/amd_energy_llm_fix.patch) using [setup_llm_amd.sh](./llm_training/setup_amd_llm.sh) file for AMD 
+    - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM.git) with commit: `f7727433293427bef04858f67b2889fe9b177d88` and applying [patch](./llm_training/aux/nvidia_energy_llm_fix.patch) using the [setup_llm.sh](./llm_training/setup_llm.sh) file for NVIDIA,
+    - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and applying [patch](./llm_training/aux/amd_energy_llm_fix.patch) using the [setup_llm_amd.sh](./llm_training/setup_amd_llm.sh) file for AMD 
     - [examples](https://github.com/chelseajohn/examples) (forked version) for Graphcore
 
 The performance is measured  in terms of  `tokens/sec`.
@@ -136,22 +136,22 @@ for NVIDIA and AMD devices and in [llm_benchmark_ipu.yaml](./llm_training/llm_be
 
     - NVIDIA GH200 and JEDI GPUs
     ```bash
-    jube run llm_training/llm_benchmark_nvidia_amd.yaml--tag container GH200
+    jube run llm_training/llm_benchmark_nvidia_amd.yaml --tag container GH200
     ```
     - AMD MI250
     ```bash
-    jube run llm_training/llm_benchmark_nvidia_amd.yaml--tag container MI250
+    jube run llm_training/llm_benchmark_nvidia_amd.yaml --tag container MI250
     ``` 
    - Graphcore GC200
     ```bash
     jube run llm_training/llm_benchmark_ipu.yaml --tag container 
     ```
 
-- To run the benchmark with defined configurations for `800M` GPT model with OSCAR data do
+- To run the benchmark with defined configurations for `800M` GPT model with OSCAR data do:
     ```bash
     jube run llm_training/llm_benchmark_nvidia_amd.yaml --tag 800M A100
     ```
-    `A100` can be replaced with `H100`, `WAIH100`, `GH200`, `JEDI` and `MI250` for the respective systems and `800M` can be replaced with `175B` and `13B` for systems with more node resources like `JEDI`,`H100`, `A100` and `MI250`.
+    `A100` can be replaced with `H100`, `WAIH100`, `GH200`, `JEDI` and `MI250` for the respective systems and `800M` can be replaced with `175B` and `13B` for systems with more node resources like `JEDI`, `H100`, `A100` and `MI250`.
 
 - To run the benchmark with defined configurations for `117M` GPT model on Graphcore with synthetic data  do
     ```bash
