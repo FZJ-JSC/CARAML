@@ -51,7 +51,7 @@ The `JUBE` file [resnet50_benchmark.xml](./resnet50/resnet50_benchmark.xml) sets
     - [tf_cnn_benchmarks](https://github.com/chelseajohn/tf_cnn_benchmarks) (forked version) for NVIDIA & AMD 
     - [examples](https://github.com/chelseajohn/examples) (forked version) for Graphcore
 
-The performance is measured in terms of `images/sec`.
+The performance is measured in terms of `images/sec` and energy is in units of `Wh`.
 
 ## LLM-Training
 
@@ -62,7 +62,7 @@ The `JUBE` file [llm_benchmark_nvidia_amd.yaml](./llm_training/llm_benchmark_nvi
     - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and applying [patch](./llm_training/aux/amd_energy_llm_fix.patch) using the [setup_llm_amd.sh](./llm_training/setup_amd_llm.sh) file for AMD 
     - [examples](https://github.com/chelseajohn/examples) (forked version) for Graphcore
 
-The performance is measured  in terms of  `tokens/sec`.
+The performance is measured in terms of `tokens/sec` and energy is in units of `Wh`.
 
 # Execution 
 
