@@ -62,7 +62,7 @@ elif [ "$ACCELERATOR" = "GC200" ]; then
         apptainer pull $PYTORCH_CONTAINER_FILE_IPU docker://graphcore/pytorch:3.3.0-ubuntu-20.04-20230703 >&2
         echo "Done pulling $PYTORCH_CONTAINER_FILE_IPU"  >&2
     fi
-elif [ "$ACCELERATOR" = "MI250" ]; then
+elif [ "$ACCELERATOR" = "MI250" ] || [ "$ACCELERATOR" = "MI300X" ]; then
     if [ -f $PYTORCH_CONTAINER_FILE_AMD ]; then
         echo "$PYTORCH_CONTAINER_FILE_AMD" exists >&2
     else
@@ -102,7 +102,7 @@ if ! [ -f $PYTORCH_PACKAGES_FILE_IPU ] && [ "$ACCELERATOR" = "GC200" ]; then
                     >&2
     touch $PYTORCH_PACKAGES_FILE_IPU
     echo "Done building additional packages for $ACCELERATOR in $PYTORCH_PACKAGES_IPU " >&2
-elif ! [ -f $PYTORCH_PACKAGES_FILE_AMD ] && [ "$ACCELERATOR" = "MI250" ]; then
+elif [[ ! -f $PYTORCH_PACKAGES_FILE_AMD  && ( "$ACCELERATOR" = "MI250" || "$ACCELERATOR" = "MI300X" ) ]]; then
     mkdir -p $PYTORCH_PACKAGES_AMD
     export PIP_USER=0 
     apptainer exec --cleanenv $PYTORCH_CONTAINER_FILE_AMD \

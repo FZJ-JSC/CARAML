@@ -42,3 +42,4 @@ image_classification/result/*.png
 image_classification/result/*.svg
 llm_training/result/*.png
 llm_training/llm_data/*.npy
+miopen_cache
