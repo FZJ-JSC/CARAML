@@ -57,7 +57,7 @@ comment: llm benchmark jube script for NVIDIA-A100,H100,GH200 and AMD-MI250,MI30
   #  Available: 2 nodes
 
   # aquavan1 MI300X AMD Node:
-  #  4× AMD MI300X 
+  #  8× AMD MI300X GPU Chiplets
   #  CPU: Dual AMD EPYC 9474F CPU (96 cores)
   #  Memory: 2304 GiB RAM (24x 96 GB DDR5-5600)
   #  GPU: AMD MI300X (PCIe Gen5, OAM) with 192 GiB HBM3, 5300 GB/s bandwidth
