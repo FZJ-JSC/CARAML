@@ -22,9 +22,9 @@ export MAX_JOBS="${SLURM_CPUS_PER_TASK:-4}"
 
 cd $BENCH_DIR
 
-if ! [ -f "$BENCH_DIR"/amd_torch_wrap.sh ]; then
-    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/amd_torch_packages/lib/python3.9/site-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/amd_torch_wrap.sh
-    chmod u+rwx "$BENCH_DIR"/amd_torch_wrap.sh
+if ! [ -f "$BENCH_DIR"/../amd_torch_wrap.sh ]; then
+    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/../amd_torch_packages/lib/python3.9/site-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/../amd_torch_wrap.sh
+    chmod u+rwx "$BENCH_DIR"/../amd_torch_wrap.sh
 fi
 
 # Clone Megatron-LM for ROCm
