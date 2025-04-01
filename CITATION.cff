@@ -19,10 +19,6 @@ authors:
     family-names: Herten
     affiliation: Forschungszentrum Jülich, Jülich Supercomputing Centre
     orcid: 'https://orcid.org/0000-0002-7150-2505'
-title: "Performance and Power: Systematic Evaluation of AI Workloads on Accelerators with CARAML"
-identifiers:
-  - type: doi
-    value: 10.1109/SCW63240.2024.00158
 repository-code: https://github.com/FZJ-JSC/CARAML'
 license: MIT
 date-released: '2024-07-26'
