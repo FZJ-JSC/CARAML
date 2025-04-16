@@ -334,12 +334,12 @@ Tags:
       <parameter name="bind_dir" tag="!container+GC200" separator="!">$jube_benchmark_home,${folder}</parameter>
       <parameter name="args_starter" separator="!" tag="!container" mode="python">
       {
-        "JEDI": " --cpu_bind=socket,v --mpi=pmi2 apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_torch_wrap.sh ",
+        "JEDI": "--cpu_bind=socket,v --mpi=pmi2 apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_torch_wrap.sh ",
         "GH200": "--cpu_bind=socket,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_torch_wrap.sh ",
-        "WAIH100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_torch_wrap.sh ",
+        "WAIH100": "--disable-dcgm --cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_torch_wrap.sh ",
         "H100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_torch_wrap.sh " ,
-        "A100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_torch_wrap.sh ",
-        "MI250": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/amd_torch_wrap.sh ",
+        "A100": "--disable-dcgm --cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_torch_wrap.sh ",
+        "MI250": " --cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/amd_torch_wrap.sh ",
         "MI300X": "--cpu_bind=none,v  apptainer exec --bind=${bind_dir} ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/amd_torch_wrap.sh ",
         "GC200": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/ipu_torch_wrap.sh "
       }["${system_name}"]</parameter>
@@ -383,8 +383,7 @@ Tags:
       <do done_file="$done_file"></do>
     </step>
 
-   <step name="combine_energy" tag="!container+!GC200" depend="execute" iterations="1">
-      <use>files</use>
+   <step name="combine_energy" tag="!container" depend="execute" iterations="1">
       <use>systemInfo</use>
       <use>systemParameter</use>
       <use>modelParameter</use>
@@ -396,12 +395,14 @@ Tags:
       <pattern name="imagespersec" type="float" tag="!GC200">Average Images/s: ${jube_pat_fp}</pattern>
       <pattern name="imagespersec" type="float" tag="GC200">throughput: ${jube_pat_fp}</pattern>
     </patternset>
+    
     <!-- <pattern name="energy_average"  tag="GC200">Average-Energy-per-GPU: ${jube_pat_fp}</pattern> -->
     <!-- <pattern name="energy_list_reimann" type="str" >Energy-per-GPU-list integrated\(Wh\): (\[.*?\])</pattern> -->
     <!-- <pattern name="energy_list_counter" type="str" tag="MI250|MI300X" >Energy-per-GPU-list from counter\(Wh\): (\[.*?\])</pattern> -->
-    <!-- <patternset name="efile_patterns">
-      <pattern name="energy_file_path" type="str" tag="!GC200">Writing combined energy DataFrame to (.*)</pattern>
-    </patternset> -->
+    
+    <patternset name="efile_patterns">
+      <pattern name="energy_file_path" type="str">Writing combined energy DataFrame to (.*)</pattern>
+    </patternset>
 
     <patternset name="jobnumber">
         <pattern name="jobid">Submitted batch job $jube_pat_int</pattern>
@@ -412,11 +413,10 @@ Tags:
       <pattern name="error_code" type="int">JUBE_ERR_CODE=$jube_pat_int</pattern>
     </patternset>
 
-    <!-- <analyse step="combine_energy" tag="!GC200">
-        <file use="efile_patterns">stdout</file>
-      </analyse> -->
-
     <analyser name="analyse" reduce="false">
+      <analyse step="combine_energy">
+        <file use="efile_patterns">stdout</file>
+      </analyse>
       <analyse step="execute">
         <file use="pattern">job.out</file>
         <file use="pattern,runtimepattern">job.err</file>
@@ -438,18 +438,20 @@ Tags:
         <column title="Devices">total_devices</column>
         <column title="Tasks/Node">taskspernode</column>
         <column title="Threads/Task">threadspertask</column>
+        <column title="Workers">num_workers</column>
         <column title="GlobalBatchSize">global_batch_size</column>
         <column title="BatchSize/Device">batch_size_per_device</column>
+        <column title="Epoch">epochs</column>
         <column title="Precision">precision</column>
         <column title="Images/second" format=".2f">imagespersec_avg</column>
+        <column title="EnergyFile">energy_file_path</column>
+        <!-- <column title="EnergyFile" tag="GC200">ipu_energy_file</column> -->
+        <column>args_starter</column>
+        <column>args_exec</column>
         <!-- <column format=".2f">throughput_in_time</column> -->
         <!-- <column title="Energy/Device(Wh)">energy_list_reimann</column> -->
         <!-- <column title="Energy_counter/Device(Wh)" tag="MI250|MI300X">energy_list_counter</column> -->
         <!-- <column title="Energy/Device(Wh)" format=".2f">energy_average</column> -->
-        <!-- <column title="EnergyFile" tag="!GC200">energy_file_path</column>
-        <column title="EnergyFile" tag="GC200">ipu_energy_file</column> -->
-        <column>args_starter</column>
-        <column>args_exec</column>
       </table>
 
       <table name="result_csv" style="csv" sort="total_devices,nodes">
@@ -474,11 +476,11 @@ Tags:
         <column title="TrainOptim" tag="!GC200+trainOptim">train_optim</column>
         <column title="ChannelLast" tag="!GC200">channels_last</column>
         <column title="Images/second" format=".2f">imagespersec_avg</column>
+        <column title="EnergyFile">energy_file_path</column>
+        <!-- <column title="EnergyFile" tag="GC200">ipu_energy_file</column> -->
         <!-- <column format=".2f">throughput_in_time</column> -->
         <!-- <column title="Energy/Device(Wh)">energy_list_reimann</column> -->
         <!-- <column title="Energy_counter/Device(Wh)" tag="MI250|MI300X">energy_list_counter</column> -->
-        <!-- <column title="EnergyFile" tag="!GC200">energy_file_path</column>
-        <column title="EnergyFile" tag="GC200">ipu_energy_file</column> -->
         <!-- <column title="Energy/Device(Wh)" format=".2f">energy_average</column> -->
       </table>
     </result>

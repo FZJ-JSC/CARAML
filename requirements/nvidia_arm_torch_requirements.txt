@@ -1,1 +1,2 @@
 jpwr[pynvml] @ git+https://github.com/FZJ-JSC/jpwr
+python-slugify==8.0.4

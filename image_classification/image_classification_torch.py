@@ -16,6 +16,10 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 
+from jpwr.ctxmgr import get_power
+import platform
+from slugify import slugify
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='PyTorch Image Classification Benchmark')
     parser.add_argument("--seed", type=int, default=1234,
@@ -326,6 +330,20 @@ def val_one_epoch(args, model, criterion, val_loader, epoch,
     
 def main():
     args = parse_arguments()
+
+    method_list = []
+    if os.getenv("ACCELERATOR") == "MI250":
+      from jpwr.gpu.rocm import power
+      method_list.append(power())
+      gpu_name = "AMD"
+    else:
+      # Energy measurement using nvidia-smi
+      from jpwr.gpu.pynvml import power
+      method_list.append(power())
+      gpu_name = "NVIDIA"
+    if os.getenv("ACCELERATOR") in ["GH200", "Jedi"]:
+      from jpwr.sys.gh import power
+      method_list.append(power())
     
     args.world_size = 1
     if args.distributed:
@@ -340,99 +358,96 @@ def main():
     print0(''.join(f'{k}: {v}\n' for k, v in vars(args).items()))
     print0('#######################################')
 
-    data_time = time.time()
-    train_loader, val_loader, dataset = create_datasets(args, device)
-    print0(f'Creating datasets took {np.round(time.time()- data_time,3)} s')
+    with get_power(method_list, 100) as training_scope:
 
-    model, criterion, optimizer, scheduler, scaler, enable_mp = initialize_model(args, device)
-    if args.train_optim:
-        if args.compiler == 'inductor':
-            train_opt = torch.compile(train_one_epoch, backend='inductor', mode=args.compiler_mode)
+        data_time = time.time()
+        train_loader, val_loader, dataset = create_datasets(args, device)
+        print0(f'Creating datasets took {np.round(time.time()- data_time,3)} s')
+
+        model, criterion, optimizer, scheduler, scaler, enable_mp = initialize_model(args, device)
+        if args.train_optim:
+            if args.compiler == 'inductor':
+                train_opt = torch.compile(train_one_epoch, backend='inductor', mode=args.compiler_mode)
+            else:
+                train_opt = torch.compile(train_one_epoch, backend='aot_eager')
         else:
-            train_opt = torch.compile(train_one_epoch, backend='aot_eager')
-    else:
-        train_opt = train_one_epoch
-    
-    if dist.is_initialized():
-        model = torch.nn.parallel.DistributedDataParallel(
-            model,
-            device_ids=[args.local_rank],
-            gradient_as_bucket_view=True,
-        )
- 
-    images_per_epoch = len(dataset)
-    print0(f'Starting training with {images_per_epoch} images...')
-    results = []
-    epoch_time = []
-    images_per_sec = []
-
-    print0(f'Starting warm-up epochs ...')
-    warmup_time = time.time()
-    # warm up epochs
-    for epoch in range(5):
+            train_opt = train_one_epoch
+        
         if dist.is_initialized():
-            train_loader.sampler.set_epoch(epoch)
-        train_opt(args, model, 
-                criterion, 
-                optimizer, 
-                scaler, 
-                train_loader,
-                epoch, 
-                enable_mp,
-                device,
-                dtype=get_dtype(args.precision)
+            model = torch.nn.parallel.DistributedDataParallel(
+                model,
+                device_ids=[args.local_rank],
+                gradient_as_bucket_view=True,
             )
-        val_one_epoch(args, model,
+    
+        images_per_epoch = len(dataset)
+        print0(f'Starting training with {images_per_epoch} images...')
+        results = []
+        epoch_time = []
+        images_per_sec = []
+
+        print0(f'Starting warm-up epochs ...')
+        warmup_time = time.time()
+        # warm up epochs
+        for epoch in range(5):
+            if dist.is_initialized():
+                train_loader.sampler.set_epoch(epoch)
+            train_opt(args, model, 
                     criterion, 
-                    val_loader,
-                    epoch,
+                    optimizer, 
+                    scaler, 
+                    train_loader,
+                    epoch, 
                     enable_mp,
                     device,
                     dtype=get_dtype(args.precision)
-            )
-        if dist.is_initialized():
-            torch.cuda.synchronize()
-    print0(f'End of warm-up epochs (took {np.round(time.time()-warmup_time,3)} s)...')
+                )
+            val_one_epoch(args, model,
+                        criterion, 
+                        val_loader,
+                        epoch,
+                        enable_mp,
+                        device,
+                        dtype=get_dtype(args.precision)
+                )
+            if dist.is_initialized():
+                torch.cuda.synchronize()
+        print0(f'End of warm-up epochs (took {np.round(time.time()-warmup_time,3)} s)...')
 
-    train_time = time.time()
-    for epoch in range(args.epochs):
-        start_time = time.time()
-        if dist.is_initialized():
-            train_loader.sampler.set_epoch(epoch)
+        train_time = time.time()
+        for epoch in range(1, args.epochs+1 ):
+            start_time = time.time()
+            if dist.is_initialized():
+                train_loader.sampler.set_epoch(epoch)
 
-        train_opt(args, model, 
-                criterion, 
-                optimizer, 
-                scaler, 
-                train_loader,
-                epoch, 
-                enable_mp,
-                device,
-                dtype=get_dtype(args.precision)
-            )
-        scheduler.step()
-        val_one_epoch(args, model,
-                                 criterion, 
-                                 val_loader,
-                                 epoch,
-                                 enable_mp,
-                                 device,
-                                 dtype=get_dtype(args.precision)
-                                 )
+            train_opt(args, model, 
+                    criterion, 
+                    optimizer, 
+                    scaler, 
+                    train_loader,
+                    epoch, 
+                    enable_mp,
+                    device,
+                    dtype=get_dtype(args.precision)
+                )
+            scheduler.step()
+            val_one_epoch(args, model,
+                                    criterion, 
+                                    val_loader,
+                                    epoch,
+                                    enable_mp,
+                                    device,
+                                    dtype=get_dtype(args.precision)
+                                    )
+            
+            if dist.is_initialized():
+                torch.cuda.synchronize()
+
+            epoch_time.append(time.time() - start_time)
+            images_per_sec.append(images_per_epoch / epoch_time[-1])
         
-        if dist.is_initialized():
-            torch.cuda.synchronize()
-
-        epoch_time.append(time.time() - start_time)
-        images_per_sec.append(images_per_epoch / epoch_time[-1])
-      
-        if epoch % 10 == 0:
-            results.append([int(epoch), images_per_sec[-1], epoch_time[-1]])
-
-    print0(f'Training for {args.epochs} epoch(s) took {np.round(time.time()-train_time,3)} s')
-    print0(tabulate(results, headers=["Epoch", "Images/s", "Time (s)"], tablefmt="grid", \
-                    floatfmt=(".0f", ".0f", ".3f")))
-    print0(f'Average Images/s: {int(np.mean(images_per_sec))}')
+            if epoch % 10 == 0 or epoch == args.epochs:
+                results.append([int(epoch), images_per_sec[-1], epoch_time[-1]])
 
     if args.save_checkpoint:
         save0({
@@ -442,10 +457,47 @@ def main():
             'optimizer_state_dict': optimizer.state_dict(),
             'scheduler_state_dict': scheduler.state_dict(),
         }, "checkpoint.pt")
+    
+    print0(f'Training for {args.epochs} epoch(s) took {np.round(time.time()-train_time,3)} s')
+    print0(tabulate(results, headers=["Epoch", "Images/s", "Time (s)"], tablefmt="grid", \
+                    floatfmt=(".0f", ".0f", ".3f")))
+    print0(f'Average Images/s: {int(np.mean(images_per_sec))}')
 
+    ##################################
+    #        ENERGY STATS HERE       #
+    ##################################
+
+    print0('-' * 64)  
+
+    energy_df, additional_data = training_scope.energy()
+    nodename  = platform.node()
+    rankid    = int(os.getenv("SLURM_PROCID"))
+    ranks     = int(os.getenv("SLURM_NTASKS"))
+    accelerator = os.getenv("ACCELERATOR")
+    power_file_base = f"{accelerator}_power.csv"
+    power_file = power_file_base.replace("csv", f"{rankid}.csv")
+    training_scope.df["nodename"] = nodename
+    training_scope.df["rank"] = rankid
+    if not os.path.exists(power_file):
+        training_scope.df.to_csv(power_file)
+    energy_df["nodename"] = nodename
+    energy_df["rank"] = rankid
+    energy_file = power_file.replace("csv", f"energy.csv")
+    if not os.path.exists(energy_file):
+        energy_df.to_csv(energy_file)
+    print0("\n=== Energy Statistics (Rank 0 Only) ===")
+    print0(f"Energy-per-GPU-list integrated(Wh): \n{energy_df.to_string()}")
+    for k,v in additional_data.items():
+        additional_path = power_file.replace("csv", f"{slugify(k)}.csv")
+        print0(f"Writing {k} df to {additional_path}")
+        v.T.to_csv(additional_path)
+        print0(f"Energy-per-GPU-list from {k}(Wh): {v.to_string()}")
+
+    print0('-' * 64)
 
     if dist.is_initialized():
         dist.destroy_process_group()
+
 
 if __name__ == '__main__':
     main()
