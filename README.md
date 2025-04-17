@@ -51,62 +51,65 @@ To run the benchmarks, you must install **JUBE**. Follow the [JUBE Installation 
 
 # Execution 
 
-Clone the repository and navigate into it:
+- Clone the repository and navigate into it:
 
 ```bash
 git clone https://github.com/FZJ-JSC/CARAML.git
 cd CARAML
 ```
 
-###  Image Classification
-- Modify `system`, `model` parameters in JUBE config
-- To pull the required container use `container` tag as:
+- Modify the `system` and `model` parameters in the respective JUBE configuration file.
+- To pull the required container use the `container` tag as follows:
     ```bash
-    jube run  image_classification/image_classification_torch_benchmark.xml --tag container H100
+    jube run  {JUBEConfig}.{xml,yaml} --tag container H100
     ```
-    For JSC systems `H100` can be replaced with  `GH200`, `MI250` and `GC200` as required.
+   Replace `H100` with one of the following as needed:
+   - `GH200` (for Arm CPU + H100)
+   - `MI250` or MI300X (for AMD)
+   - `GC200` (for Graphcore)
+> **Note**: The `container` tag should ideally be used only once at the beginning to pull and set up the container..
+
+###  Image Classification
 
 - To run the benchmark with defined configurations do
     ```bash
     jube run image_classification/image_classification_torch_benchmark.xml --tag H100
     ```
 
-    `H100` can be replaced with `A100`, `WAIH100`, `GH200`, `JEDI`, `MI250` and `GC200` as required.
+    `H100` can be replaced with any tag mentioned in [tested accelerators](#tested-accelerators) section.
 
 - After the benchmark has been executed, use `jube continue` to postprocess results
     ```bash
-   jube continue image_classification/image_classification_torch_benchmark._run -i last
+   jube continue image_classification/image_classification_torch_benchmark_run -i last
    ```
 
 - To generate result do:
    ```bash
-  jube result image_classification/image_classification_torch_benchmark._run -i last
+  jube result image_classification/image_classification_torch_benchmark_run -i last
    ```
 
 ### LLM-Training
-- Set the required `system` and `model` parameters  in [llm_benchmark_nvidia_amd.yaml](./llm_training/llm_benchmark_nvidia_amd.yaml)
-for NVIDIA and AMD devices and in [llm_benchmark_ipu.yaml](./llm_training/llm_benchmark_ipu.yaml) for Graphcore
 
 - To run the benchmark with defined configurations for `800M` GPT model with OSCAR data do:
     ```bash
     jube run llm_training/llm_benchmark_nvidia_amd.yaml --tag 800M A100
     ```
-    `A100` can be replaced with `H100`, `WAIH100`, `GH200`, `JEDI` and `MI250` for the respective systems and `800M` can be replaced with `13B` and `175B` for systems with more node resources like `JEDI`, `H100`, `A100` and `MI250`.
+    `A100` can be replaced with any tag mentioned in [tested accelerators](#tested-accelerators) section and `800M` can be replaced with `13B` and `175B` for systems with more node resources.
 
 - To run the benchmark with defined configurations for `117M` GPT model on Graphcore with synthetic data  do
     ```bash
     jube run llm_training/llm_benchmark_ipu.yaml --tag 117M synthetic
     ```
-    If tag `synthetic` is not given, the benchmark will use OSCAR data
+    If tag `synthetic` is not given, the benchmark will use OSCAR data.
 
 - After the benchmark has been executed, use `jube continue` to postprocess results
     ```bash
-    jube continue llm_training/llm_benchmark_nvidia_amd_run -i last
+    jube continue llm_training/llm_benchmark_{nvidia_amd,ipu}_run -i last
    ```
  
 - To generate result do:
    ```bash
-   jube result llm_training/llm_benchmark_nvidia_amd_run -i last
+   jube result llm_training/llm_benchmark_{nvidia_amd,ipu}_run -i last
    ```
   
  
