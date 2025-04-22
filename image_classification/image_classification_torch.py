@@ -39,8 +39,8 @@ def parse_arguments():
                         help='Specify precision mode (fp32, tf32, fp16, bf16)')
     parser.add_argument('--distributed', action='store_true',
                         help='Enable Distributed Data Parallel (DDP)')
-    parser.add_argument("--compiler", type=str, default="",
-                        choices=["trace", "inductor", "aot_eager"],
+    parser.add_argument("--compiler", type=str, default=None,
+                        choices=["trace", "inductor", "aot_eager", "None"],
                         help="Optimization to enable for model")
     parser.add_argument("--compiler_mode", type=str, default="default",
                         choices=["default", "reduce-overhead", "max-autotune"],

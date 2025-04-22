@@ -210,7 +210,7 @@ Tags:
       <parameter name="seed" type="int">1234</parameter>
       <parameter name="epochs" type="int">100</parameter>
       <parameter name="lr" type="float">0.01</parameter>
-      <parameter name="num_workers"  mode="python">int($threadspertask/4)</parameter>
+      <parameter name="num_workers"  mode="python" type="int">int($threadspertask/4)</parameter>
       <parameter name="precision" separator=";" tag="!precision+!GC200">fp16</parameter>
       <parameter name="precision" separator=";" tag="precision+!GC200">fp32;tf32;fp16;bf16</parameter>
       <parameter name="precision" separator=";" tag="!precision+GC200">16.16</parameter>
@@ -235,15 +235,25 @@ Tags:
       <parameter name="dataset" tag="synthetic">Synthetic(Device)</parameter>
       <!--Replace with path to ImageNet data -->
       <!-- <parameter name="data_dir" tag="!generated">/p/project1/cjsc/benchmark/imagenet-processed/</parameter> -->
-      <!-- 256;512;1024;2048;4096 -->
+      <!-- 32;64;128;256;512;1024;2048-->
       <parameter name="global_batch_size"  type="int" separator=";">256</parameter>
       <parameter name="batch_size_per_device"  type="int" separator=";" mode="python" tag="!GC200">int(${global_batch_size}/${total_devices})</parameter>
       <!-- For IPU make sure the global batch size = (total_replicas * micro_batch_size * gradient_accumulation)) -->
       <!-- ref:https://github.com/graphcore/examples/blob/3cc8f81f13728dd8c17d0d3c8d2fc1549b159485/vision/cnns/pytorch/train/train.py#L301C45-L301C115  -->
-      <parameter name="ipu_gas" mode="python" type="int"  tag ="GC200" separator="!">16</parameter>
+      <parameter name="ipu_gas" mode="python" type="int"  tag ="GC200" separator=";">
+      { 
+        "16": "4",
+        "32": "4",
+        "64": "4",
+        "128": "16",
+        "256": "16",
+        "512": "32",
+        "1024": "64",
+        "2048": "128",
+        "4096": "256"
+      }["${global_batch_size}"]
+      </parameter>
       <parameter name="batch_size_per_device"  type="int" separator=";" mode="python" tag="GC200">int(${global_batch_size}/(${replicas}*${ipu_gas}))</parameter>
-      <!-- IPU hacky workaround: JUBE does not go to next step due to error134
-      <parameter name="ipu_energy_file" tag="GC200+!container">$jube_benchmark_home/$jube_wp_relpath/GC200_power.0.energy.csv</parameter> -->
     </parameterset>
 
     <parameterset name="environment">
@@ -396,7 +406,7 @@ Tags:
       <pattern name="imagespersec" type="float" tag="GC200">throughput: ${jube_pat_fp}</pattern>
     </patternset>
     
-    <!-- <pattern name="energy_average"  tag="GC200">Average-Energy-per-GPU: ${jube_pat_fp}</pattern> -->
+
     <!-- <pattern name="energy_list_reimann" type="str" >Energy-per-GPU-list integrated\(Wh\): (\[.*?\])</pattern> -->
     <!-- <pattern name="energy_list_counter" type="str" tag="MI250|MI300X" >Energy-per-GPU-list from counter\(Wh\): (\[.*?\])</pattern> -->
     
@@ -426,7 +436,7 @@ Tags:
 
     <result>
       <use>analyse</use>
-      <table name="result" style="pretty" sort="total_devices,nodes">
+      <table name="result" style="pretty" sort="total_devices,nodes,global_batch_size">
         <column title="JobID">jobid</column>
         <column title="System">system_name</column>
         <column title="Version">system_version</column>
@@ -445,16 +455,13 @@ Tags:
         <column title="Precision">precision</column>
         <column title="Images/second" format=".2f">imagespersec_avg</column>
         <column title="EnergyFile">energy_file_path</column>
-        <!-- <column title="EnergyFile" tag="GC200">ipu_energy_file</column> -->
         <column>args_starter</column>
         <column>args_exec</column>
-        <!-- <column format=".2f">throughput_in_time</column> -->
         <!-- <column title="Energy/Device(Wh)">energy_list_reimann</column> -->
         <!-- <column title="Energy_counter/Device(Wh)" tag="MI250|MI300X">energy_list_counter</column> -->
-        <!-- <column title="Energy/Device(Wh)" format=".2f">energy_average</column> -->
       </table>
 
-      <table name="result_csv" style="csv" sort="total_devices,nodes">
+      <table name="result_csv" style="csv" sort="total_devices,nodes,global_batch_size">
         <column title="JobID">jobid</column>
         <column title="System">system_name</column>
         <column title="Version">system_version</column>
@@ -477,11 +484,8 @@ Tags:
         <column title="ChannelLast" tag="!GC200">channels_last</column>
         <column title="Images/second" format=".2f">imagespersec_avg</column>
         <column title="EnergyFile">energy_file_path</column>
-        <!-- <column title="EnergyFile" tag="GC200">ipu_energy_file</column> -->
-        <!-- <column format=".2f">throughput_in_time</column> -->
         <!-- <column title="Energy/Device(Wh)">energy_list_reimann</column> -->
         <!-- <column title="Energy_counter/Device(Wh)" tag="MI250|MI300X">energy_list_counter</column> -->
-        <!-- <column title="Energy/Device(Wh)" format=".2f">energy_average</column> -->
       </table>
     </result>
   </benchmark>
