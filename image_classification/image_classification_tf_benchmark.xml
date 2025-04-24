@@ -197,7 +197,7 @@
     <parameterset name="environment">
       <parameter name="root_dir">$jube_benchmark_home/..</parameter>
       <parameter name="ipu_log_flag" separator="!">export POPLAR_LOG_LEVEL=INFO;export POPART_LOG_LEVEL=INFO</parameter>
-      <parameter name="ipu_cache_path"  seperator="!">export TF_POPLAR_FLAGS='--executable_cache_path=$jube_benchmark_home/ipu_cache'</parameter>
+      <parameter name="ipu_cache_path"  separator="!">export TF_POPLAR_FLAGS='--executable_cache_path=$jube_benchmark_home/ipu_cache'</parameter>
       <parameter name="python_path">export PYTHONPATH=${packages}:$PYTHONPATH</parameter>
       <parameter name="bench_path">export BENCH_DIR=${jube_benchmark_home}</parameter>
       <parameter name="data_path" tag="!synthetic">export DATASETS_DIR=${data_dir}</parameter>
