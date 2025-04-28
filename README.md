@@ -6,13 +6,10 @@ CARAML provides a compact and automated benchmarking tool that leverages [JUBE](
 
 Paper: [Arxiv](https://arxiv.org/abs/2409.12994), [IEEE](https://ieeexplore.ieee.org/abstract/document/10820809)
 
-![LLM Training Benchmark](./assets/LLM_800M.png)
-
-![Image Classsification: ResNet50](./assets/resnet_bar_nvidia_amd_ipu1.png)
 
 ## Tested Accelerators:
 
-CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JEDI](https://apps.fz-juelich.de/jsc/hps/jedi/index.html#) and [WEST-AI Nodes](https://westai.de/services/hardware/). These include the accelerators: 
+CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JEDI](https://apps.fz-juelich.de/jsc/hps/jedi/index.html#), [WEST-AI Nodes](https://westai.de/services/hardware/) and [NHR-FAU](https://doc.nhr.fau.de/clusters/testcluster/). These include the accelerators: 
 
 - AMD MI200 node with 4 $\times$ MI250 GPUs (`tag: MI250`)
 - Graphcore IPU-POD4 M2000 with 4 $\times$ GC200 IPUs (`tag: GC200`)
@@ -21,6 +18,7 @@ CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-ju
 - NVIDIA Hopper node (NVLink) with 4 $\times$ H100 GPUs (`tag: WAIH100`)
 - NVIDIA Grace-Hopper chip with 1 $\times$ GH200 GPU (`tag: GH200`)
 - NVIDIA Grace-Hopper Node with 4 $\times$ GH200 GPUs (`tag: JEDI`)
+- AMD MI300X node with 8 $\times$ MI300X GPU Chiplets (`tag: MI300X`)
 
 # Benchmark
 
@@ -50,64 +48,71 @@ To run the benchmarks, you must install **JUBE**. Follow the [JUBE Installation 
 
 # Execution 
 
-Clone the repository and navigate into it:
+- Clone the repository and navigate into it:
 
 ```bash
 git clone https://github.com/FZJ-JSC/CARAML.git
 cd CARAML
 ```
 
-###  Image Classification
-- Modify `system`, `model` parameters in JUBE config
-- To pull the required container use `container` tag as:
+- Modify the `system` and `model` parameters in the respective JUBE configuration file.
+- To pull the required container use the `container` tag as follows:
     ```bash
-    jube run  image_classification/image_classification_torch_benchmark.xml --tag container H100
+    jube run  {JUBEConfig}.{xml,yaml} --tag container H100
     ```
-    For JSC systems `H100` can be replaced with  `GH200`, `MI250` and `GC200` as required.
+   Replace `H100` with one of the following as needed:
+   - `GH200` (for Arm CPU + H100)
+   - `MI250` or MI300X (for AMD)
+   - `GC200` (for Graphcore)
+> **Note**: The `container` tag should ideally be used only once at the beginning to pull and set up the container..
+
+###  Image Classification
 
 - To run the benchmark with defined configurations do
     ```bash
     jube run image_classification/image_classification_torch_benchmark.xml --tag H100
     ```
 
-    `H100` can be replaced with `A100`, `WAIH100`, `GH200`, `JEDI`, `MI250` and `GC200` as required.
+    `H100` can be replaced with any tag mentioned in [tested accelerators](#tested-accelerators) section.
 
 - After the benchmark has been executed, use `jube continue` to postprocess results
     ```bash
-   jube continue image_classification/image_classification_torch_benchmark._run -i last
+   jube continue image_classification/image_classification_torch_benchmark_run -i last
    ```
 
 - To generate result do:
    ```bash
-  jube result image_classification/image_classification_torch_benchmark._run -i last
+  jube result image_classification/image_classification_torch_benchmark_run -i last
    ```
 
 ### LLM-Training
-- Set the required `system` and `model` parameters  in [llm_benchmark_nvidia_amd.yaml](./llm_training/llm_benchmark_nvidia_amd.yaml)
-for NVIDIA and AMD devices and in [llm_benchmark_ipu.yaml](./llm_training/llm_benchmark_ipu.yaml) for Graphcore
 
 - To run the benchmark with defined configurations for `800M` GPT model with OSCAR data do:
     ```bash
     jube run llm_training/llm_benchmark_nvidia_amd.yaml --tag 800M A100
     ```
-    `A100` can be replaced with `H100`, `WAIH100`, `GH200`, `JEDI` and `MI250` for the respective systems and `800M` can be replaced with `13B` and `175B` for systems with more node resources like `JEDI`, `H100`, `A100` and `MI250`.
+    `A100` can be replaced with any tag mentioned in [tested accelerators](#tested-accelerators) section and `800M` can be replaced with `13B` and `175B` for systems with more node resources.
 
 - To run the benchmark with defined configurations for `117M` GPT model on Graphcore with synthetic data  do
     ```bash
     jube run llm_training/llm_benchmark_ipu.yaml --tag 117M synthetic
     ```
-    If tag `synthetic` is not given, the benchmark will use OSCAR data
+    If tag `synthetic` is not given, the benchmark will use OSCAR data.
 
 - After the benchmark has been executed, use `jube continue` to postprocess results
     ```bash
-    jube continue llm_training/llm_benchmark_nvidia_amd_run -i last
+    jube continue llm_training/llm_benchmark_{nvidia_amd,ipu}_run -i last
    ```
  
 - To generate result do:
    ```bash
-   jube result llm_training/llm_benchmark_nvidia_amd_run -i last
+   jube result llm_training/llm_benchmark_{nvidia_amd,ipu}_run -i last
    ```
-  
+
+# Results
+![LLM Training Benchmark](./assets/LLM_800M.png)
+
+![Image Classsification: ResNet50](./assets/resnet_torch_all.png)
  
 # JSC Specific Fixes
 In order to use PyTorch `torch run` API on JSC systems [fixed_torch_run.py](./llm_training/aux/fixed_torch_run.py) fix is required. The fix solves the issue defined [here](https://github.com/pytorch/pytorch/pull/81691).

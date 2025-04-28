@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+title: "CARAML"
+message: "In addition to citing this benchmark repository, please also cite the accompanying SC24 paper."
+authors:
+  - given-names: "Chelsea"
+    family-names: "John"
+    affiliation: "Forschungszentrum Jülich, Jülich Supercomputing Centre"
+    orcid: "https://orcid.org/0000-0003-3777-7393"
+repository-code: "https://github.com/FZJ-JSC/CARAML"
+license: "MIT"
+date-released: "2024-07-26"
+references:
+  - type: conference-paper
+    citation-key: "SC24-Paper"
+    authors:
+      - given-names: "Chelsea"
+        family-names: "John"
+        affiliation: "Forschungszentrum Jülich, Jülich Supercomputing Centre"
+        orcid: "https://orcid.org/0000-0003-3777-7393"
+      - given-names: "Carolin"
+        family-names: "Penke"
+        affiliation: "Forschungszentrum Jülich, Jülich Supercomputing Centre"
+        orcid: "https://orcid.org/0000-0002-4043-3885"
+      - given-names: "Stepan"
+        family-names: "Nassyr"
+        affiliation: "Forschungszentrum Jülich, Jülich Supercomputing Centre"
+        orcid: "https://orcid.org/0000-0002-0035-244X"
+      - given-names: "Andreas"
+        family-names: "Herten"
+        affiliation: "Forschungszentrum Jülich, Jülich Supercomputing Centre"
+        orcid: "https://orcid.org/0000-0002-7150-2505"
+    doi: "10.1109/SCW63240.2024.00158"
+    booktitle: "SC24-W: Workshops of the International Conference for High Performance Computing, Networking, Storage and Analysis"
+    start: 1164
+    end: 1176
+    title: "Performance and Power: Systematic Evaluation of AI Workloads on Accelerators with CARAML"
+    year: 2024
+

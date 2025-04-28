@@ -28,14 +28,14 @@ cd $BENCH_DIR
 
 echo "ACCELERATOR=$ACCELERATOR"
 
-if ! [ -f "$BENCH_DIR"/nvidia_x86_torch_wrap.sh ] && [[ " ${NVIDIA_X86_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
+if ! [ -f "$BENCH_DIR"/../nvidia_x86_torch_wrap.sh ] && [[ " ${NVIDIA_X86_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
     echo "creating NVIDIA X86 wrapper"
-    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/nvidia_x86_torch_packages/local/lib/python3.10/dist-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/nvidia_x86_torch_wrap.sh
-    chmod u+rwx "$BENCH_DIR"/nvidia_x86_torch_wrap.sh
-elif ! [ -f "$BENCH_DIR"/nvidia_arm_torch_wrap.sh ] && [[ " ${NVIDIA_ARM_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
+    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/../nvidia_x86_torch_packages/local/lib/python3.10/dist-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/../nvidia_x86_torch_wrap.sh
+    chmod u+rwx "$BENCH_DIR"/../nvidia_x86_torch_wrap.sh
+elif ! [ -f "$BENCH_DIR"/../nvidia_arm_torch_wrap.sh ] && [[ " ${NVIDIA_ARM_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
     echo "creating NVIDIA ARM wrapper"
-    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/nvidia_arm_torch_packages/local/lib/python3.10/dist-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/nvidia_arm_torch_wrap.sh
-    chmod u+rwx "$BENCH_DIR"/nvidia_arm_torch_wrap.sh
+    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/../nvidia_arm_torch_packages/local/lib/python3.10/dist-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/../nvidia_arm_torch_wrap.sh
+    chmod u+rwx "$BENCH_DIR"/../nvidia_arm_torch_wrap.sh
 fi
 
 # Clone Megatron-LM
