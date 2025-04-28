@@ -183,7 +183,7 @@ Tags:
       <parameter name="executable" tag="GC200+!container">python3 ${folder}/train.py</parameter>
       <parameter name="executable" tag="(H100|GH200|MI250|GC200|MI300X)+container">bash ${root_dir}/get_pytorch_container.sh</parameter>
       <!-- Benchmark file arguments -->
-      <parameter name="args_exec" separator="!" tag="GC200+!container">--config=resnet50-pod4 ${data_arg} --precision=${precision} --replicas=${total_devices} --micro-batch-size=${batch_size_per_device}</parameter>
+      <parameter name="args_exec" separator="!" tag="GC200+!container">--config=resnet50-pod4 ${data_arg} --precision=${precision} --replicas=${total_devices} --micro-batch-size=${batch_size_per_device} --gradient-accumulation=${ipu_gas} --iterations=${ipu_iterations_epoch}</parameter>
       <parameter name="args_exec" separator="!" tag="!GC200+!container">--arch=${model} --seed=${seed} --batch_size=${batch_size_per_device} --epochs=${epochs} --lr=${lr} --num_workers=${num_workers} --precision=${precision} --compiler=${compiler} --compiler_mode=${compiler_mode} ${train_optim} --channels_last=${channels_last} --distributed</parameter>
       <parameter name="measurement" separator="!">${load_modules}; time -p</parameter>
       <parameter name="preprocess" mode="text" tag="!(GC200|MI250|MI300X)">MASTER_ADDR="$$(scontrol show hostnames "$$SLURM_JOB_NODELIST" | head -n 1)"</parameter>
@@ -236,10 +236,10 @@ Tags:
       <!--Replace with path to ImageNet data -->
       <!-- <parameter name="data_dir" tag="!generated">/p/project1/cjsc/benchmark/imagenet-processed/</parameter> -->
       <!-- 32;64;128;256;512;1024;2048-->
-      <parameter name="global_batch_size"  type="int" separator=";">256</parameter>
+      <parameter name="global_batch_size"  type="int" separator=";">32;64;128;256;512;1024;2048</parameter>
       <parameter name="batch_size_per_device"  type="int" separator=";" mode="python" tag="!GC200">int(${global_batch_size}/${total_devices})</parameter>
       <!-- For IPU make sure the global batch size = (total_replicas * micro_batch_size * gradient_accumulation)) -->
-      <!-- ref:https://github.com/graphcore/examples/blob/3cc8f81f13728dd8c17d0d3c8d2fc1549b159485/vision/cnns/pytorch/train/train.py#L301C45-L301C115  -->
+      <!-- ref:https://github.com/chelseajohn/examples/blob/92db93438bf0d51dfa0f115bcddf30fefcbfe2c7/vision/cnns/pytorch/train/train.py#L304 -->
       <parameter name="ipu_gas" mode="python" type="int"  tag ="GC200" separator=";">
       { 
         "16": "4",
@@ -254,6 +254,9 @@ Tags:
       }["${global_batch_size}"]
       </parameter>
       <parameter name="batch_size_per_device"  type="int" separator=";" mode="python" tag="GC200">int(${global_batch_size}/(${replicas}*${ipu_gas}))</parameter>
+      <!--images_per_epoch=10000, device_iterations=1-->
+      <!--ref:https://github.com/chelseajohn/examples/blob/92db93438bf0d51dfa0f115bcddf30fefcbfe2c7/vision/cnns/pytorch/datasets/dataset.py#L109 -->
+      <parameter name="ipu_iterations_epoch" type="int" mode="python" tag="GC200">10000//${global_batch_size}</parameter> 
     </parameterset>
 
     <parameterset name="environment">
