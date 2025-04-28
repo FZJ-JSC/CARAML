@@ -6,9 +6,6 @@ CARAML provides a compact and automated benchmarking tool that leverages [JUBE](
 
 Paper: [Arxiv](https://arxiv.org/abs/2409.12994), [IEEE](https://ieeexplore.ieee.org/abstract/document/10820809)
 
-![LLM Training Benchmark](./assets/LLM_800M.png)
-
-![Image Classsification: ResNet50](./assets/resnet_bar_nvidia_amd_ipu1.png)
 
 ## Tested Accelerators:
 
@@ -111,7 +108,11 @@ cd CARAML
    ```bash
    jube result llm_training/llm_benchmark_{nvidia_amd,ipu}_run -i last
    ```
-  
+
+# Results
+![LLM Training Benchmark](./assets/LLM_800M.png)
+
+![Image Classsification: ResNet50](./assets/resnet_torch_all.png)
  
 # JSC Specific Fixes
 In order to use PyTorch `torch run` API on JSC systems [fixed_torch_run.py](./llm_training/aux/fixed_torch_run.py) fix is required. The fix solves the issue defined [here](https://github.com/pytorch/pytorch/pull/81691).
