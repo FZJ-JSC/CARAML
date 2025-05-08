@@ -1,5 +1,5 @@
 diff --git a/megatron/training.py b/megatron/training.py
-index cebe085b..be272522 100644
+index cebe085b..7dff33e5 100644
 --- a/megatron/training.py
 +++ b/megatron/training.py
 @@ -5,6 +5,7 @@
@@ -10,7 +10,7 @@ index cebe085b..be272522 100644
  import time
  # The earliest we can measure the start time.
  _TRAIN_START_TIME = time.time()
-@@ -41,6 +42,54 @@ from megatron.core.pipeline_parallel import get_forward_backward_func
+@@ -41,6 +42,55 @@ from megatron.core.pipeline_parallel import get_forward_backward_func
  from megatron.utils import report_memory
  from megatron.model.vision.knn_monitor import compute_feature_bank
  
@@ -34,7 +34,8 @@ index cebe085b..be272522 100644
 +    #       architectures implemented in this codebase (e.g., h->ffn_h GEMM and ffn_h->h GEMM
 +    #       in MLP layer).
 +    # - 2x: A GEMM of a m*n tensor with a n*k tensor requires 2mnk floating-point operations.
-+    expansion_factor = 3 * 2 * 2
++    expansion_factor = (3 * 2 * 2 * (4/3)) if args.recompute_granularity else (3 * 2 * 2)
++    logit_dr = (2+2/3) if args.recompute_granularity else (2)
 +
 +    return (
 +        expansion_factor
@@ -59,13 +60,13 @@ index cebe085b..be272522 100644
 +                * gated_linear_multiplier
 +            )
 +            # Logit.
-+            + (args.padded_vocab_size / (2 * args.num_layers * args.hidden_size))
++            + (args.padded_vocab_size / (logit_dr * args.num_layers * args.hidden_size))
 +        )
 +    )
  
  def print_datetime(string):
      """Note that this call will sync across all ranks."""
-@@ -155,7 +204,9 @@ def pretrain(train_valid_test_dataset_provider,
+@@ -155,7 +205,9 @@ def pretrain(train_valid_test_dataset_provider,
                                model, optimizer, opt_param_scheduler,
                                train_data_iterator, valid_data_iterator,
                                process_non_loss_data_func, config)
@@ -76,7 +77,7 @@ index cebe085b..be272522 100644
          print_datetime('after training is done')
  
          if args.save and iteration != 0:
-@@ -596,18 +647,78 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
+@@ -596,18 +648,78 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
              )
  
      if iteration % args.log_interval == 0:
@@ -118,7 +119,7 @@ index cebe085b..be272522 100644
 +        ) * (
 +            1.
 +            + (seq_len / (6. * hidden_size))
-+            + (vocab_size / (16. * num_layers * hidden_size))
++            + (vocab_size / (16. * (checkpoint_activations_factor / 4)* num_layers * hidden_size))
 +        )
 +        tflops = (
 +            flops_per_iteration
@@ -157,7 +158,7 @@ index cebe085b..be272522 100644
          log_string += ' learning rate: {:.3E} |'.format(learning_rate)
          log_string += ' global batch size: {:5d} |'.format(batch_size)
          for key in total_loss_dict:
-@@ -629,6 +740,9 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
+@@ -629,6 +741,9 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
              total_loss_dict[skipped_iters_key])
          log_string += ' number of nan iterations: {:3d} |'.format(
              total_loss_dict[nan_iters_key])
@@ -167,7 +168,7 @@ index cebe085b..be272522 100644
          total_loss_dict[advanced_iters_key] = 0
          total_loss_dict[skipped_iters_key] = 0
          total_loss_dict[nan_iters_key] = 0
-@@ -743,7 +857,10 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
+@@ -743,7 +858,10 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
                  save_checkpoint_and_time(iteration, model, optimizer,
                                           opt_param_scheduler)
                  print_datetime('exiting program after receiving SIGTERM.')
@@ -179,7 +180,7 @@ index cebe085b..be272522 100644
  
          if args.save and args.save_interval and \
             iteration % args.save_interval == 0:
-@@ -764,7 +881,10 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
+@@ -764,7 +882,10 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
                      save_checkpoint_and_time(iteration, model, optimizer,
                                               opt_param_scheduler)
                  print_datetime('exiting program after {} minutes'.format(train_time))
@@ -191,7 +192,7 @@ index cebe085b..be272522 100644
  
          # Exiting based on iterations
          if args.exit_interval and iteration % args.exit_interval == 0:
-@@ -773,7 +893,10 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
+@@ -773,7 +894,10 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
                                           opt_param_scheduler)
              torch.distributed.barrier()
              print_datetime('exiting program at iteration {}'.format(iteration))
