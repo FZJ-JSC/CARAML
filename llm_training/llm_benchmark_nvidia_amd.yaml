@@ -176,10 +176,10 @@ parameterset:
     init_with: platform.xml
     parameter:
       - {name: account,         tag: "!(WAIH100|MI300X)",          _: "zam"}
-      - {name: account,         tag: "WAIH100",           _: "westai0005"}
+      - {name: account,         tag: "WAIH100",           _: "westai0049"}
       - {name: account,         tag: "MI300X",           _: " "}
       - {name: queue,           mode: python,             
-       _: "{'JEDI': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-wai','H100': 'dc-h100' ,'A100': 'dc-gpu', 'MI250': 'dc-mi200', 'MI300X': ''}['${system_name}']"}
+       _: "{'JEDI': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'dc-gpu', 'MI250': 'dc-mi200', 'MI300X': ''}['${system_name}']"}
       - {name: nodes,            type: int, tag: "container",   _: 1}
       - {name: nodes,            type: int, tag: "800M",   _: 1}
       - {name: nodes,            type: int, tag: "13B",    _: 44}
@@ -399,10 +399,16 @@ parameterset:
           --cpu_bind=v --mpi=pmi2 apptainer exec  --bind=${jube_benchmark_home},${root_dir} --nv ${singularity_file} ${root_dir}/nvidia_arm_torch_wrap.sh
       - name: args_starter
         mode: text
-        tag: "!(JEDI|MI250|MI300X|GH200)+!container"
+        tag: "(WAIH100|A100)+!container"
         separator: |
         _: |
           --disable-dcgm --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home},${root_dir} --nv ${singularity_file} ${root_dir}/nvidia_x86_torch_wrap.sh
+      - name: args_starter
+        mode: text
+        tag: "H100+!container"
+        separator: |
+        _: |
+           --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home},${root_dir} --nv ${singularity_file} ${root_dir}/nvidia_x86_torch_wrap.sh
       - name: args_starter
         mode: text
         tag: "GH200+!container"
