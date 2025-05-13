@@ -400,7 +400,8 @@ Tags:
       <use>systemInfo</use>
       <use>systemParameter</use>
       <use>modelParameter</use>
-      <do>module load GCC SciPy-bundle</do>
+      <do tag="!MI300X">module load GCC SciPy-bundle</do>
+      <!--Assumes local environment has pandas package installed -->
       <do>python3 ${jube_benchmark_home}/../aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/execute/${system_name}_power.%d.energy.csv " $$(seq 0 $$((${tasks}-1))))</do>
    </step>>
 

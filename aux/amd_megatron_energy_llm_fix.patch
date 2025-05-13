@@ -302,7 +302,7 @@ index ee266175..a3489f49 100644
          # - Also, leverage state_dict() and load_state_dict() to
          #   recast preexisting per-param state tensors.
 diff --git a/megatron/training.py b/megatron/training.py
-index 468a6002..46be65dc 100644
+index 468a6002..446c42e0 100644
 --- a/megatron/training.py
 +++ b/megatron/training.py
 @@ -18,6 +18,7 @@
@@ -387,7 +387,7 @@ index 468a6002..46be65dc 100644
                                           opt_param_scheduler)
                  print_datetime('exiting program after receiving SIGTERM.')
 -                sys.exit()
-+                if os.getenv("ACCELERATOR") == "MI250":
++                if os.getenv("ACCELERATOR") in ["MI250", "MI300X"]:
 +                    return -1
 +                else:  
 +                    sys.exit()
@@ -401,7 +401,7 @@ index 468a6002..46be65dc 100644
 +                
                  print_datetime('exiting program after {} minutes'.format(train_time))
 -                sys.exit()
-+                if os.getenv("ACCELERATOR") == "MI250":
++                if os.getenv("ACCELERATOR") in ["MI250", "MI300X"]:
 +                    return -1
 +                else:  
 +                    sys.exit()
@@ -414,7 +414,7 @@ index 468a6002..46be65dc 100644
              print_datetime('exiting program at iteration {}'.format(iteration))
 -            sys.exit()
 +            
-+            if os.getenv("ACCELERATOR") == "MI250":
++            if os.getenv("ACCELERATOR") in ["MI250", "MI300X"]:
 +                    return -1
 +            else:  
 +                    sys.exit()

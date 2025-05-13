@@ -195,7 +195,7 @@ parameterset:
         _: "{'JEDI': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128', 'MI250': '48', 'MI300X': '48'}['${system_name}']"}
       - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
       - {name: timelimit,        tag: "container",         _: "02:00:00"}
-      - {name: timelimit,        tag: "!container",         _: "00:15:00"} # set time limit +4mins than exit_duration
+      - {name: timelimit,        tag: "!container",         _: "1:04:00"} # set time limit +4mins than exit_duration
       - {name: oottime,          type: int,                _: 120}
       - {name: ootsignal,        type: int,                _: 12}
       - {name: outlogfile,                                _: "job.out"}
@@ -549,6 +549,8 @@ step:
         - systemParameter
         - modelParameter
       do:
-        - module load GCC SciPy-bundle
+      # Assumes local environment has pandas package installed
+        - tag: "!MI300X"
+          _: module load GCC SciPy-bundle
         - python3 ${root_dir}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$((${total_devices}-1))))
 

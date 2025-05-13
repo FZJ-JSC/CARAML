@@ -332,7 +332,7 @@ def main():
     args = parse_arguments()
 
     method_list = []
-    if os.getenv("ACCELERATOR") == "MI250":
+    if os.getenv("ACCELERATOR") in ["MI250", "MI300X"]:
       from jpwr.gpu.rocm import power
       method_list.append(power())
       gpu_name = "AMD"
@@ -341,7 +341,7 @@ def main():
       from jpwr.gpu.pynvml import power
       method_list.append(power())
       gpu_name = "NVIDIA"
-    if os.getenv("ACCELERATOR") in ["GH200", "Jedi"]:
+    if os.getenv("ACCELERATOR") in ["GH200", "JEDI"]:
       from jpwr.sys.gh import power
       method_list.append(power())
     
