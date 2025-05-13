@@ -110,7 +110,7 @@ cd CARAML
    ```
 
 # Results
-![LLM Training Benchmark](./assets/LLM_800M.png)
+![LLM Training Benchmark](./assets/LLM_800M_all.png)
 
 ![Image Classsification: ResNet50](./assets/resnet_torch_all.png)
  
