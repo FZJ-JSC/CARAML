@@ -11,22 +11,23 @@ Paper: [Arxiv](https://arxiv.org/abs/2409.12994), [IEEE](https://ieeexplore.ieee
 
 CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JEDI](https://apps.fz-juelich.de/jsc/hps/jedi/index.html#), [WEST-AI Nodes](https://westai.de/services/hardware/) and [NHR-FAU](https://doc.nhr.fau.de/clusters/testcluster/). These include the accelerators: 
 
-- AMD MI200 node with 4 $\times$ MI250 GPUs (`tag: MI250`)
-- Graphcore IPU-POD4 M2000 with 4 $\times$ GC200 IPUs (`tag: GC200`)
 - NVIDIA Ampere node (SXM) with 4 $\times$ A100 GPUs (`tag: A100`)
 - NVIDIA Hopper node (PCIe) with 4 $\times$ H100 GPUs (`tag: H100`)
 - NVIDIA Hopper node (NVLink) with 4 $\times$ H100 GPUs (`tag: WAIH100`)
 - NVIDIA Grace-Hopper chip with 1 $\times$ GH200 GPU (`tag: GH200`)
 - NVIDIA Grace-Hopper Node with 4 $\times$ GH200 GPUs (`tag: JEDI`)
 - AMD MI300X node with 8 $\times$ MI300X GPU Chiplets (`tag: MI300X`)
+- AMD MI300A node with 4 $\times$ MI300A APU (`tag: MI300A`)
+- AMD MI200 node with 4 $\times$ MI250 GPUs (`tag: MI250`)
+- Graphcore IPU-POD4 M2000 with 4 $\times$ GC200 IPUs (`tag: GC200`)
 
 # Benchmark
 
 CARAML currently provides two main benchmarks implemented in Python:
 ### 1. Computer Vision: Image Classification (Training)
-The [image_classification](./image_classification/) model training benchmark is implemented in PyTorch. It is designed to test image classification models such as ResNet50 on various accelerators. For IPU's [graphcore/examples](https://github.com/chelseajohn/examples) is used. Performance is measured in `images/sec` and energy is measured in `Wh`.
+The [image_classification](./image_classification/) model training benchmark is implemented in PyTorch. It is designed to test image classification models such as ResNet50 on various accelerators. For IPU's [graphcore/examples](https://github.com/chelseajohn/examples) is used. Performance is measured in `images/s` and energy is measured in `Wh`.
 
-> **Note**: Support for the Image Classification benchmark in TensorFlow has been discontinued.
+> **Note**: Support for the image classification benchmark in TensorFlow has been discontinued.
 
 ### 2. GPT Language Model (LLM Training)
 The [LLM-training](./llm_training/) benchmark is implemented in PyTorch with:
@@ -34,7 +35,7 @@ The [LLM-training](./llm_training/) benchmark is implemented in PyTorch with:
 - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and [patch](./aux/amd_megatron_energy_llm_fix.patch) applied for AMD 
 - [graphcore/examples](https://github.com/chelseajohn/examples) (forked version) for Graphcore
 
-Performance is measured in `tokens/sec` and energy is recorded in `Wh`.
+Performance is measured in `tokens/s` and energy is recorded in `Wh`.
 
 # Requirements
 
@@ -62,9 +63,9 @@ cd CARAML
     ```
    Replace `H100` with one of the following as needed:
    - `GH200` (for Arm CPU + H100)
-   - `MI250` or MI300X (for AMD)
+   - `MI250` or `MI300X` or `MI300A` (for AMD)
    - `GC200` (for Graphcore)
-> **Note**: The `container` tag should ideally be used only once at the beginning to pull and set up the container..
+> **Note**: The `container` tag should ideally be used only once at the beginning to pull and set up the container.
 
 ###  Image Classification
 
@@ -110,9 +111,9 @@ cd CARAML
    ```
 
 # Results
-![LLM Training Benchmark](./assets/LLM_800M_all.png)
+![LLM Training Benchmark](./assets/LLM_800M_all_8.png)
 
-![Image Classsification: ResNet50](./assets/resnet_torch_all.png)
+![Image Classsification: ResNet50](./assets/resnet_torch_all_9.png)
  
 # JSC Specific Fixes
 In order to use PyTorch `torch run` API on JSC systems [fixed_torch_run.py](./llm_training/aux/fixed_torch_run.py) fix is required. The fix solves the issue defined [here](https://github.com/pytorch/pytorch/pull/81691).

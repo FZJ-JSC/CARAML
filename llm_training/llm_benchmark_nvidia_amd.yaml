@@ -1,6 +1,6 @@
 name:    llm-nvidia-amd
 outpath: llm_benchmark_nvidia_amd_run
-comment: llm benchmark jube script for NVIDIA-A100,H100,GH200 and AMD-MI250,MI300X
+comment: llm benchmark jube script for NVIDIA-A100,H100,GH200 and AMD-MI250,MI300X, MI300A
 # Megatron-LM benchmark for 
   # JEDI-GH200 NVIDIA Node:
   #   4× NVIDIA GH200 Grace-Hopper Superchip 
@@ -60,7 +60,13 @@ comment: llm benchmark jube script for NVIDIA-A100,H100,GH200 and AMD-MI250,MI30
   #  8× AMD MI300X GPU Chiplets
   #  CPU: Dual AMD EPYC 9474F CPU (96 cores)
   #  Memory: 2304 GiB RAM (24x 96 GB DDR5-5600)
-  #  GPU: AMD MI300X (PCIe Gen5, OAM) with 192 GiB HBM3, 5300 GB/s bandwidth
+  #  GPU: AMD MI300X (PCIe Gen5, OAM) with 192 GiB HBM3, 5300 GB/s 
+  
+  # aquavan2 MI300A AMD Node:
+  #  4x AMD MI300A APU
+  #  CPU: AMD Zen4 (4x 24 Core, 3.7 GHz)
+  #  Memory: 512 GiB RAM (4x 128 GB HBM3)
+  #  APU: AMD MI300A (PCIe Gen5, OAM) with 128 GiB HBM3, 5300 GB/s bandwidth
 
 parameterset:
   - name: systemInfo
@@ -72,6 +78,7 @@ parameterset:
       - {name: system_name, type: str, tag: "A100",    _: "A100"}
       - {name: system_name, type: str, tag: "MI250",   _: "MI250"}
       - {name: system_name, type: str, tag: "MI300X",  _: "MI300X"}
+      - {name: system_name, type: str, tag: "MI300A",  _: "MI300A"}
       - {name: system_version,         mode: shell,    _: "echo 2025.01"}
 
   - name: modelParameter
@@ -90,11 +97,11 @@ parameterset:
       - {name: pp_size,           type: int, mode: python, _: "[1,2,8][$modelidx]"}
       - {name: dp_size,           type: int, mode: python, _: "int( $total_devices / ($pp_size * $tp_size))"}
       - {name: dataset,           type: str,               _: "OSCAR"}
-      - {name: total_devices,            type: int, mode: python, update_mode: step, _: "$gpus_per_node*$nodes"}
+      - {name: total_devices,     type: int, mode: python, update_mode: step, _: "$gpus_per_node*$nodes"}
       - {name: micro_batch_size,  type: int, mode: python, _: "[4,2,2][$modelidx]"}
       - {name: gas,               type: int, mode: python, _: "[1,64,64][$modelidx]"}
       # global_batch_size has to be divisible by dp_size*micro_batch_size*gas; 
-      - {name: global_batch_size, type: int, tag: "800M+!container", separator: ",", _: "512"}
+      - {name: global_batch_size, type: int, tag: "800M+!container", separator: ",", _: "32,64,128,256,1024,2048,4096"}
       #16,32,64,128,256,512,1024,2048,4096
       - {name: global_batch_size, type: int, tag: "!800M", mode: python, 
          _: "int( $dp_size * $micro_batch_size * $gas)"}
@@ -104,7 +111,7 @@ parameterset:
       - {name: modelargs,             tag: "13B",  mode: text,        _: --ffn-hidden-size 20480 --fp16}
       - {name: modelargs,             tag: "175B", mode: text,        _: --bf16}
       - {name: megatron_repo,              tag: "JEDI|GH200|WAIH100|H100|A100", mode: text, _: Megatron-LM}
-      - {name: megatron_repo,              tag: "MI250|MI300X",                        mode: text, _: Megatron-LM-ROCm}
+      - {name: megatron_repo,              tag: "MI250|MI300X|MI300A",                        mode: text, _: Megatron-LM-ROCm}
       - name: optimizerargs
         mode: text
         _: >
@@ -132,7 +139,7 @@ parameterset:
           --use-flash-attn 
       - name: additionalargs
         mode: text
-        tag: "MI250|MI300X"
+        tag: "MI250|MI300X|MI300A"
         _: >
           --position-embedding-type rotary
           --attention-head-type multihead 
@@ -175,11 +182,11 @@ parameterset:
   - name: systemParameter
     init_with: platform.xml
     parameter:
-      - {name: account,         tag: "!(WAIH100|MI300X)",          _: "zam"}
+      - {name: account,         tag: "!(WAIH100|MI300X|MI300A)",          _: "zam"}
       - {name: account,         tag: "WAIH100",           _: "westai0049"}
-      - {name: account,         tag: "MI300X",           _: " "}
+      - {name: account,         tag: "MI300X|MI300A",           _: " "}
       - {name: queue,           mode: python,             
-       _: "{'JEDI': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'dc-gpu', 'MI250': 'dc-mi200', 'MI300X': ''}['${system_name}']"}
+       _: "{'JEDI': 'all', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'dc-gpu', 'MI250': 'dc-mi200', 'MI300X': '', 'MI300A': ''}['${system_name}']"}
       - {name: nodes,            type: int, tag: "container",   _: 1}
       - {name: nodes,            type: int, tag: "800M",   _: 1}
       - {name: nodes,            type: int, tag: "13B",    _: 44}
@@ -188,11 +195,11 @@ parameterset:
       - {name: gpus_per_node,    type: int, tag: "(MI250|MI300X)+!container", _: 8}
       - {name: gpus_per_node,    type: int, tag: "(H100|MI250|MI300X)+container", _: 1}
       - {name: gpus_per_node,    type: int, tag: "GH200",  _: 1}
-      - {name: gres,                        tag: "!(MI250|MI300X)", _: "gpu:$gpus_per_node"}
+      - {name: gres,                        tag: "!(MI250|MI300X|MI300A)", _: "gpu:$gpus_per_node"}
       - {name: taskspernode,     type: int,                _: 1}
       - {name: tasks,            type: int, mode: python, update_mode: step, _: "$taskspernode*$nodes"}
       - {name: threadspertask,  type: int, mode: python, tag: "!container" ,
-        _: "{'JEDI': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128', 'MI250': '48', 'MI300X': '48'}['${system_name}']"}
+        _: "{'JEDI': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128', 'MI250': '48', 'MI300X': '48', 'MI300A': '48'}['${system_name}']"}
       - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
       - {name: timelimit,        tag: "container",         _: "02:00:00"}
       - {name: timelimit,        tag: "!container",         _: "1:04:00"} # set time limit +4mins than exit_duration
@@ -209,6 +216,12 @@ parameterset:
         _: |
           #SBATCH --constraint="mi300x"
           #SBATCH --signal=B:${ootsignal}@${oottime}
+      - name: additional_job_config
+        mode: text
+        tag: "MI300A" 
+        _: |
+          #SBATCH --constraint="mi300a"
+          #SBATCH --signal=B:${ootsignal}@${oottime}
       - {name: root_dir,            type: str,               _: "$jube_benchmark_home/.."}
       # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-02.html
       # nvcr.io/nvidia/pytorch:24.02-py3
@@ -220,16 +233,16 @@ parameterset:
           _: "$root_dir/containers/ngc2406_pytorch24_cuda125_nccl2215_py310.sif"}
       # https://hub.docker.com/layers/rocm/pytorch/rocm6.1.2_ubuntu20.04_py3.9_pytorch_release-2.1.2/images/sha256-e3c1c3cde0886689b139daad7a62ad24af3f292855f683d7b28806ae9f1d2a7e?context=explore
       # rocm6.1.2_ubuntu20.04_py3.9_pytorch_release-2.1.2
-      - {name: singularity_file, type: str, tag: "MI250|MI300X", 
+      - {name: singularity_file, type: str, tag: "MI250|MI300X|MI300A", 
           _: "$root_dir/containers/amd_pytorch21_rocm612_rccl2186_py39.sif"}
       - name: ibcomm
-        tag: "!(GH200|MI250|MI300X)"
+        tag: "!(GH200|MI250|MI300X|MI300A)"
         _: |
           # setting IB for out of band communication
           export NCCL_SOCKET_IFNAME=ib0
           export GLOO_SOCKET_IFNAME=ib0
       - name: ibcomm
-        tag: "GH200|MI250|MI300X"
+        tag: "GH200|MI250|MI300X|MI300A"
         _: ""
       - name: rdzv_conf
         tag: "!JEDI"
@@ -240,7 +253,7 @@ parameterset:
         _: >
           --rdzv_conf=is_host=True  
       - name: masteri
-        tag: "!(JEDI|MI300X)"
+        tag: "!(JEDI|MI300X|MI300A)"
         _: |
           MASTER_ADDR="${MASTER_ADDR}i"
       - name: masteri
@@ -256,7 +269,7 @@ parameterset:
           echo "Submitted batch job $${SLURM_JOBID}"
           export SRUN_CPUS_PER_TASK=$${SLURM_CPUS_PER_TASK}
           export BENCH_DIR=$jube_benchmark_home
-          if [ "${system_name}" = "MI250" ] || [ "${system_name}" = "MI300X" ]; then
+          if [ "${system_name}" = "MI250" ] || [ "${system_name}" = "MI300X" ] || [ "${system_name}" = "MI300A" ]; then
               export ROCM_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
           else
               export CUDA_VISIBLE_DEVICES=0,1,2,3
@@ -369,14 +382,14 @@ parameterset:
       - name: executable
         mode: python
         separator: ";"
-        tag: "!container+!(MI250|MI300X)"
+        tag: "!container+!(MI250|MI300X|MI300A)"
         update_mode: step
         _:
           "{'benchmark': \" \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt & \\nwait\\ncd $$OLDDIR\", 'combine_energy': ''}['$jube_step_name']"
       - name: executable
         mode: python
         separator: ";"
-        tag: "!container+(MI250|MI300X)"
+        tag: "!container+(MI250|MI300X|MI300A)"
         update_mode: step
         _:
           "{'benchmark': \" \\\"$$LAUNCHER $$CMD\\\" 2>&1 | tee -a \\\"$$LOGS_PATH\\\"/main_log.txt & \\nwait\\ncd $$OLDDIR\", 'combine_energy': ''}['$jube_step_name']"
@@ -423,7 +436,7 @@ parameterset:
           --cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home},${root_dir} ${singularity_file} ${root_dir}/amd_torch_wrap.sh
       - name: args_starter
         mode: text
-        tag: "MI300X+!container"
+        tag: "(MI300X|MI300A)+!container"
         separator: |
         _: |
           --cpu_bind=none,v  apptainer exec --bind=${jube_benchmark_home},${root_dir} ${singularity_file} ${root_dir}/amd_torch_wrap.sh
@@ -441,7 +454,7 @@ patternset:
       - {name: tokens_per_second,  type: float,  mode: python, _: "(1.0/$elp_pat_avg)*$global_batch_size*$sequence_length"}
       - {name: throughput_in_time, type: float, mode: python, _: "(20000000/$tokens_per_second)"}
       #- {name: energy_list_reimann,type: str,   _: "Energy-per-GPU-list integrated\\(Wh\\): (\\[.*?\\])"}
-      #- {name: energy_list_counter,type: str, tag: "MI250|MI300X",  _: "Energy-per-GPU-list from counter\\(Wh\\): (\\[.*?\\])"}
+      #- {name: energy_list_counter,type: str, tag: "MI250|MI300X|MI300A",  _: "Energy-per-GPU-list from counter\\(Wh\\): (\\[.*?\\])"}
    - name: efile_patterns
      pattern:
       - {name: energy_file_path, type: str, _: "Writing combined energy DataFrame to (.*)"}
@@ -486,13 +499,13 @@ result:
         - {title: "Avg_TFLOPs/GPU", format: ".2f", _: tflops_pat_avg}
         - {title: "EnergyFile",  _: energy_file_path}
         # - {title: "Energy/Device(Wh)",  _: energy_list_reimann}
-        # - {title: "Energy_counter/Device(Wh)", tag: "MI250|MI300X",  _: energy_list_counter}
+        # - {title: "Energy_counter/Device(Wh)", tag: "MI250|MI300X|MI300A",  _: energy_list_counter}
         # - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
 
 step:
 
     - name: get_container
-      tag: container+(H100|GH200|MI250|MI300X)
+      tag: container+(H100|GH200|MI250|MI300X|MI300A)
       iterations: 1
       use:
         - systemInfo
@@ -508,7 +521,7 @@ step:
         _:          $submit $submit_script     
 
     - name: setup_llm
-      tag: "!(MI250|MI300X)+!container"
+      tag: "!(MI250|MI300X|MI300A)+!container"
       iterations: 1
       use:
         - systemInfo
@@ -517,7 +530,7 @@ step:
         - export ACCELERATOR=$system_name
         - bash $BENCH_DIR/setup_nvidia_llm.sh
     - name: setup_llm
-      tag: "(MI250|MI300X)+!container"
+      tag: "(MI250|MI300X|MI300A)+!container"
       iterations: 1
       do:
         - export BENCH_DIR=$jube_benchmark_home
@@ -550,7 +563,7 @@ step:
         - modelParameter
       do:
       # Assumes local environment has pandas package installed
-        - tag: "!MI300X"
+        - tag: "!(MI300X|MI300A)"
           _: module load GCC SciPy-bundle
         - python3 ${root_dir}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$((${total_devices}-1))))
 

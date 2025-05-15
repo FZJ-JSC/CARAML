@@ -70,10 +70,16 @@
     Memory: 2304 GiB RAM (24x 96 GB DDR5-5600)
     GPU: AMD MI300X (PCIe Gen5, OAM) with 192 GiB HBM3, 5300 GB/s bandwidth
 
+  aquavan2 MI300A AMD Node:
+    4x AMD MI300A APU
+    CPU: AMD Zen4 (4x 24 Core, 3.7 GHz)
+    Memory: 512 GiB RAM (4x 128 GB HBM3)
+    APU: AMD MI300A (PCIe Gen5, OAM) with 128 GiB HBM3, 5300 GB/s bandwidth
+
 
 Tags:
   system_name: 
-    `JEDI`, `GH200`, `WAIH100`,`H100`, `A100`, `MI250`, `GC200`, `MI300X`
+    `JEDI`, `GH200`, `WAIH100`,`H100`, `A100`, `MI250`, `GC200`, `MI300X`, MI300A'
   `precision`: run all precision (fp32, tf32, fp16, bf16); default: fp16
   Compile Strategies (default: trace):
     `inductor`: compile with inductor backend
@@ -97,6 +103,7 @@ Tags:
       <parameter name="system_name" type="str" tag="MI250">MI250</parameter>
       <parameter name="system_name" type="str" tag="GC200">GC200</parameter>
       <parameter name="system_name" type="str" tag="MI300X">MI300X</parameter>
+      <parameter name="system_name" type="str" tag="MI300A">MI300A</parameter>
     </parameterset>
     <parameterset name="systemParameter" init_with="platform.xml">
       <parameter name="nodes" type="int" separator=";" tag="!container" mode="python">
@@ -108,15 +115,17 @@ Tags:
         "A100": "2",
         "MI250": "2",
         "GC200": "1",
-        "MI300X": "1"
+        "MI300X": "1",
+        "MI300A": "1"
       }["${system_name}"]</parameter>
-      <parameter name="nodes" type="int" separator=";" tag="container+(H100|GH200|MI250|GC200|MI300X)" mode="python">
+      <parameter name="nodes" type="int" separator=";" tag="container+(H100|GH200|MI250|GC200|MI300X|MI300A)" mode="python">
       { 
         "GH200": "1",
         "H100": "1",
         "MI250": "1",
         "GC200": "1",
-        "MI300X": "1"
+        "MI300X": "1",
+        "MI300A": "1"
       }["${system_name}"]</parameter>
       <parameter name="gpus_per_node" type="int" separator=";" mode="python">
       { 
@@ -128,6 +137,7 @@ Tags:
         "MI250": "8",
         "GC200": "4",
         "MI300X": "8",
+        "MI300A": "4",
       }["${system_name}"]</parameter>
       <parameter name="taskspernode" type="int" separator=";" mode="python">1</parameter>
       <parameter name="tasks" type="int" separator=";" mode="python">${nodes}*${taskspernode}</parameter>
@@ -141,6 +151,7 @@ Tags:
         "MI250": "48",
         "GC200": "48",
         "MI300X": "48",
+        "MI300A": "48",
       }["${system_name}"]</parameter>
       <parameter name="threadspertask" type="int" tag="container" mode="python">4</parameter>
       <parameter name="queue" mode="python">
@@ -153,13 +164,14 @@ Tags:
         "MI250": "dc-mi200",
         "GC200": "dc-ipu",
         "MI300X": " ",
+        "MI300A": " ",
       }["${system_name}"]</parameter>
-      <parameter name="account" tag="!(WAIH100|MI300X)">zam</parameter>
+      <parameter name="account" tag="!(WAIH100|MI300X|MI300A)">zam</parameter>
       <parameter name="account" tag="WAIH100">westai0005</parameter>
       <parameter name="account" tag="MI300X"></parameter>
       <parameter name="timelimit" tag="!GC200+!container">00:20:00</parameter>
       <parameter name="timelimit" tag="GC200+!container">01:20:00</parameter>
-      <parameter name="timelimit" tag="(H100|GH200|MI250|GC200|MI300X)+container">01:20:00</parameter>
+      <parameter name="timelimit" tag="(H100|GH200|MI250|GC200|MI300X|MI300A)+container">01:20:00</parameter>
       <parameter name="singularity_file" mode="python">
       { <!-- https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-02.html -->
         <!-- nvcr.io/nvidia/pytorch:24.02-py3 -->
@@ -174,6 +186,7 @@ Tags:
        <!-- rocm6.1.2_ubuntu20.04_py3.9_pytorch_release-2.1.2 -->
         "MI250": "$root_dir/containers/amd_pytorch21_rocm612_rccl2186_py39.sif",
         "MI300X": "$root_dir/containers/amd_pytorch21_rocm612_rccl2186_py39.sif",
+        "MI300A": "$root_dir/containers/amd_pytorch21_rocm612_rccl2186_py39.sif",
        <!-- https://hub.docker.com/layers/graphcore/pytorch/3.3.0-ubuntu-20.04-20230703/images/sha256-7f65b5ff5bdc2dad3c112e45e380dc2549113d3eec181d4cf04df6a006cd42a4?context=explore -->
        <!-- pytorch:3.3.0-ubuntu-20.04-20230703 -->
         "GC200": "$root_dir/containers/ipu_pytorch20_poplar33_py38.sif" 
@@ -181,14 +194,14 @@ Tags:
       <!-- Benchmark file -->
       <parameter name="executable" tag="!GC200+!container">python ${distributed_launcher} ${folder}/image_classification_torch.py</parameter>
       <parameter name="executable" tag="GC200+!container">python3 ${folder}/train.py</parameter>
-      <parameter name="executable" tag="(H100|GH200|MI250|GC200|MI300X)+container">bash ${root_dir}/get_pytorch_container.sh</parameter>
+      <parameter name="executable" tag="(H100|GH200|MI250|GC200|MI300X|MI300A)+container">bash ${root_dir}/get_pytorch_container.sh</parameter>
       <!-- Benchmark file arguments -->
       <parameter name="args_exec" separator="!" tag="GC200+!container">--config=resnet50-pod4 ${data_arg} --precision=${precision} --replicas=${total_devices} --micro-batch-size=${batch_size_per_device} --gradient-accumulation=${ipu_gas} --iterations=${ipu_iterations_epoch}</parameter>
       <parameter name="args_exec" separator="!" tag="!GC200+!container">--arch=${model} --seed=${seed} --batch_size=${batch_size_per_device} --epochs=${epochs} --lr=${lr} --num_workers=${num_workers} --precision=${precision} --compiler=${compiler} --compiler_mode=${compiler_mode} ${train_optim} --channels_last=${channels_last} --distributed</parameter>
       <parameter name="measurement" separator="!">${load_modules}; time -p</parameter>
-      <parameter name="preprocess" mode="text" tag="!(GC200|MI250|MI300X)">MASTER_ADDR="$$(scontrol show hostnames "$$SLURM_JOB_NODELIST" | head -n 1)"</parameter>
+      <parameter name="preprocess" mode="text" tag="!(GC200|MI250|MI300X|MI300A)">MASTER_ADDR="$$(scontrol show hostnames "$$SLURM_JOB_NODELIST" | head -n 1)"</parameter>
       <parameter name="preprocess" mode="text" tag="GC200"></parameter>
-      <parameter name="preprocess" mode="text" tag="MI250|MI300X"><![CDATA[
+      <parameter name="preprocess" mode="text" tag="MI250|MI300X|MI300A"><![CDATA[
         MASTER_ADDR="$$(scontrol show hostnames "$$SLURM_JOB_NODELIST" | head -n 1)"
         export MIOPEN_USER_DB_PATH=\${jube_benchmark_home}/miopen_cache
         export MIOPEN_CUSTOM_CACHE_DIR=${MIOPEN_USER_DB_PATH}
@@ -203,6 +216,7 @@ Tags:
         ]]>
       </parameter>
       <parameter name="additional_job_config" mode="text" tag="MI300X">#SBATCH --constraint="mi300x"</parameter>
+      <parameter name="additional_job_config" mode="text" tag="MI300A">#SBATCH --constraint="mi300a"</parameter>
     </parameterset>
 
     <parameterset name="modelParameter">
@@ -267,15 +281,15 @@ Tags:
       <parameter name="accelerator">export ACCELERATOR=$system_name</parameter>
       <parameter name="cuda_devices" separator="!">export CUDA_VISIBLE_DEVICES=0,1,2,3</parameter>
       <parameter name="rocm_devices" separator="!">export ROCM_VISIBLE_DEVICES=0,1,2,3,4,5,6,7</parameter>
-      <parameter name="ibcomm" separator="!" tag="!(GH200|MI250|MI300X)">export NCCL_SOCKET_IFNAME=ib0; export GLOO_SOCKET_IFNAME=ib0</parameter>
-      <parameter name="ibcomm" separator="!" tag="GH200|MI250|MI300X"></parameter>
+      <parameter name="ibcomm" separator="!" tag="!(GH200|MI250|MI300X|MI300A)">export NCCL_SOCKET_IFNAME=ib0; export GLOO_SOCKET_IFNAME=ib0</parameter>
+      <parameter name="ibcomm" separator="!" tag="GH200|MI250|MI300X|MI300A"></parameter>
       <!-- Check TRITON_LIBCUDA_PATH location in container -->
       <parameter name="compiler_flags" separator="!" tag="!(inductor|eager)">export LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LIBRARY_PATH; export TRITON_LIBCUDA_PATH=/usr/local/cuda/lib64/stubs; export TORCH_LOGS=+dynamo; export TORCHDYNAMO_VERBOSE=1</parameter>
       <parameter name="compiler_flags" separator="!" tag="(inductor|eager)"></parameter>
       <parameter name="rdzv_conf" tag="!JEDI">--rdzv_conf=is_host=$(if ((SLURM_NODEID)); then echo False; else echo True; fi)</parameter>
       <parameter name="rdzv_conf" tag="JEDI">--rdzv_conf=is_host=True</parameter>
-      <parameter name="masteri" tag="!(JEDI|GH200|MI300X)">"${MASTER_ADDR}i"</parameter>
-      <parameter name="masteri" tag="JEDI|GH200|MI300X">"${MASTER_ADDR}"</parameter>
+      <parameter name="masteri" tag="!(JEDI|GH200|MI300X|MI300A)">"${MASTER_ADDR}i"</parameter>
+      <parameter name="masteri" tag="JEDI|GH200|MI300X|MI300A">"${MASTER_ADDR}"</parameter>
       <parameter name="packages" separator="!" mode="python">
       { 
         <!-- nvidia_arm_torch_requirements.txt -->
@@ -288,6 +302,7 @@ Tags:
         <!-- amd_torch_requirements.txt -->
         "MI250": "$root_dir/amd_torch_packages/lib/python3.9/site-packages",
         "MI300X": "$root_dir/amd_torch_packages/lib/python3.9/site-packages",
+        "MI300A": "$root_dir/amd_torch_packages/lib/python3.9/site-packages",
         <!-- ipu_torch_requirements.txt -->
         "GC200": "$root_dir/ipu_torch_packages/lib/python3.8/site-packages"
       }["${system_name}"]</parameter>
@@ -300,6 +315,7 @@ Tags:
         "A100":    "${cpus_per_task}; ${ibcomm} ${cuda_devices}; ${python_path}; ${accelerator}; ${bench_path}; ${compiler_flags}",
         "MI250":   "${cpus_per_task}; ${rocm_devices}; ${python_path};${accelerator}; ${bench_path}",
         "MI300X":   "${cpus_per_task}; ${rocm_devices}; ${python_path};${accelerator}; ${bench_path}",
+        "MI300A":   "${cpus_per_task}; ${rocm_devices}; ${python_path};${accelerator}; ${bench_path}",
         "GC200":   "${cpus_per_task}; ${accelerator}; ${bench_path}"
       }["${system_name}"]</parameter>
      <parameter name="load_modules" separator="!" tag="container" mode="python">
@@ -308,6 +324,7 @@ Tags:
         "H100":  "${accelerator}; ${bench_path}" ,
         "MI250": "${accelerator}; ${bench_path}",
         "MI300X": "${accelerator}; ${bench_path}",
+        "MI300A": "${accelerator}; ${bench_path}",
         "GC200": "${accelerator}; ${bench_path}"
       }["${system_name}"]</parameter>
      <parameter name="distributed_launcher" tag="!container+!GC200">${root_dir}/aux/fixed_torch_run.py --nproc_per_node=$gpus_per_node --nnodes=$nodes --rdzv_endpoint=${masteri}:6000 --rdzv_backend=c10d --node_rank="${SLURM_PROCID}" $rdzv_conf --tee=3</parameter>
@@ -329,7 +346,7 @@ Tags:
         export PYTHONPATH=\${POPART_ROOT}/python:\$PYTHONPATH
         ]]>
       </parameter>
-      <parameter name="container_env" tag="MI250|MI300X" separator="!" mode="text"><![CDATA[
+      <parameter name="container_env" tag="MI250|MI300X|MI300A" separator="!" mode="text"><![CDATA[
         export MIOPEN_ENABLE_LOG=1
         export MIOPEN_DEBUG=1
         export MIOPEN_CUSTOM_CACHE_DIR=\${MIOPEN_USER_DB_PATH}
@@ -354,6 +371,7 @@ Tags:
         "A100": "--disable-dcgm --cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_torch_wrap.sh ",
         "MI250": " --cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/amd_torch_wrap.sh ",
         "MI300X": "--cpu_bind=none,v  apptainer exec --bind=${bind_dir} ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/amd_torch_wrap.sh ",
+        "MI300A": "--cpu_bind=none,v  apptainer exec --bind=${bind_dir} ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/amd_torch_wrap.sh ",
         "GC200": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/ipu_torch_wrap.sh "
       }["${system_name}"]</parameter>
     </parameterset>
@@ -364,7 +382,7 @@ Tags:
     <fileset name="files" tag="!GC200">
     </fileset>
     
-    <step name="pull_container" tag="container+(H100|GH200|MI250|MI300X|GC200)" iterations="1">
+    <step name="pull_container" tag="container+(H100|GH200|MI250|MI300X|MI300A|GC200)" iterations="1">
       <use>systemInfo</use>
       <use>systemParameter</use>
       <use>environment</use>
@@ -387,11 +405,11 @@ Tags:
       <do  mode="shell" tag="GC200">printf "%s\n" '#!/bin/bash' "${container_env}" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/ipu_torch_wrap.sh</do>
       <do  mode="shell" tag="(H100|A100|WAIH100)">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_torch_wrap.sh</do>
       <do  mode="shell" tag="(GH200|JEDI)">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_torch_wrap.sh</do>
-      <do  mode="shell" tag="MI250|MI300X">printf "%s\n" "export MIOPEN_USER_DB_PATH=${jube_benchmark_home}/miopen_cache" "${container_env}" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/amd_torch_wrap.sh</do>
+      <do  mode="shell" tag="MI250|MI300X|MI300A">printf "%s\n" "export MIOPEN_USER_DB_PATH=${jube_benchmark_home}/miopen_cache" "${container_env}" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/amd_torch_wrap.sh</do>
       <do  mode="shell" tag="GC200">chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/ipu_torch_wrap.sh </do>
       <do  mode="shell" tag="(H100|A100|WAIH100)">chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_torch_wrap.sh </do>
       <do  mode="shell" tag="(GH200|JEDI)">chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_torch_wrap.sh </do>
-      <do  mode="shell" tag="MI250|MI300X">chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/amd_torch_wrap.sh </do>
+      <do  mode="shell" tag="MI250|MI300X|MI300A">chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/amd_torch_wrap.sh </do>
       <do>$submit $submit_script</do>
       <do done_file="$done_file"></do>
     </step>
@@ -400,7 +418,7 @@ Tags:
       <use>systemInfo</use>
       <use>systemParameter</use>
       <use>modelParameter</use>
-      <do tag="!MI300X">module load GCC SciPy-bundle</do>
+      <do tag="!(MI300X|MI300A)">module load GCC SciPy-bundle</do>
       <!--Assumes local environment has pandas package installed -->
       <do>python3 ${jube_benchmark_home}/../aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/execute/${system_name}_power.%d.energy.csv " $$(seq 0 $$((${tasks}-1))))</do>
    </step>>

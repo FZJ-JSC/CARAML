@@ -332,7 +332,7 @@ def main():
     args = parse_arguments()
 
     method_list = []
-    if os.getenv("ACCELERATOR") in ["MI250", "MI300X"]:
+    if os.getenv("ACCELERATOR") in ["MI250", "MI300X", "MI300A"]:
       from jpwr.gpu.rocm import power
       method_list.append(power())
       gpu_name = "AMD"
