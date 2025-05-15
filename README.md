@@ -1,8 +1,8 @@
 # CARAML 
 
-**C**ompact **A**utomated **R**eproducible **A**ssessment of **M**achine **L**earning (**CARAML**)  is a benchmark framework designed to assess mainstream Computer Vision (CV) and Natural Language Processing (NLP) workloads on novel accelerators. It has been developed and extensively tested on systems at the Jülich Supercomputing Centre (JSC).
+**C**ompact **A**utomated **R**eproducible **A**ssessment of **M**achine **L**earning (**CARAML**)  is a benchmark framework designed to assess AI workloads on novel accelerators. It has been developed and extensively tested on systems at the Jülich Supercomputing Centre (JSC).
 
-CARAML provides a compact and automated benchmarking tool that leverages [JUBE](https://apps.fz-juelich.de/jsc/jube/docu/index.html), a scripting-based framework for creating benchmark sets, running them across different systems, and evaluating results. Additionally, it includes power/energy measurements through the [jpwr](https://github.com/FZJ-JSC/jpwr) tool.
+CARAML leverages [JUBE](https://apps.fz-juelich.de/jsc/jube/docu/index.html), a scripting-based framework for creating benchmark sets, running them across different systems, and evaluating results. Additionally, it includes power/energy measurements through the [jpwr](https://github.com/FZJ-JSC/jpwr) tool.
 
 Paper: [Arxiv](https://arxiv.org/abs/2409.12994), [IEEE](https://ieeexplore.ieee.org/abstract/document/10820809)
 
@@ -11,19 +11,23 @@ Paper: [Arxiv](https://arxiv.org/abs/2409.12994), [IEEE](https://ieeexplore.ieee
 
 CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JEDI](https://apps.fz-juelich.de/jsc/hps/jedi/index.html#), [WEST-AI Nodes](https://westai.de/services/hardware/) and [NHR-FAU](https://doc.nhr.fau.de/clusters/testcluster/). These include the accelerators: 
 
-- NVIDIA Ampere node (SXM) with 4 $\times$ A100 GPUs (`tag: A100`)
-- NVIDIA Hopper node (PCIe) with 4 $\times$ H100 GPUs (`tag: H100`)
-- NVIDIA Hopper node (NVLink) with 4 $\times$ H100 GPUs (`tag: WAIH100`)
-- NVIDIA Grace-Hopper chip with 1 $\times$ GH200 GPU (`tag: GH200`)
-- NVIDIA Grace-Hopper Node with 4 $\times$ GH200 GPUs (`tag: JEDI`)
-- AMD MI300X node with 8 $\times$ MI300X GPU Chiplets (`tag: MI300X`)
-- AMD MI300A node with 4 $\times$ MI300A APU (`tag: MI300A`)
-- AMD MI200 node with 4 $\times$ MI250 GPUs (`tag: MI250`)
-- Graphcore IPU-POD4 M2000 with 4 $\times$ GC200 IPUs (`tag: GC200`)
+```markdown
+| System                                            | Configuration                                     | Tag       |
+|---------------------------------------------------|---------------------------------------------------|-----------|
+| NVIDIA Ampere node (SXM)                          | 4 × A100 (40GB HBM2e) GPUs                        | `A100`    |
+| NVIDIA Hopper node (PCIe)                         | 4 × H100 (80GB HBM2e) GPUs                        | `H100`    |
+| NVIDIA Hopper node (NVLink)                       | 4 × H100 (94GB HBM2e) GPUs                        | `WAIH100` |
+| NVIDIA Grace-Hopper chip                          | 1 × GH200 (480GB LPDDR5X, 96GB HBM3) GPU          | `GH200`   |
+| NVIDIA Grace-Hopper node                          | 4 × GH200 (120GB LPDDR5X, 96GB HBM3) GPUs         | `JEDI`    |
+| AMD MI300X node                                   | 8 × MI300X (192GB HBM3) GPU Chiplets              | `MI300X`  |
+| AMD MI300A node                                   | 4 × MI300A (128GB HBM3) APUs                      | `MI300A`  |
+| AMD MI200 node                                    | 4 × MI250 (128GB HBM2e) GPUs                      | `MI250`   |
+| Graphcore IPU-POD4 M2000                          | 4 × GC200 (512GB DDR4-3200) IPUs                  | `GC200`   |
+```
 
 # Benchmark
 
-CARAML currently provides two main benchmarks implemented in Python:
+CARAML currently provides benchmarks implemented in Python:
 ### 1. Computer Vision: Image Classification (Training)
 The [image_classification](./image_classification/) model training benchmark is implemented in PyTorch. It is designed to test image classification models such as ResNet50 on various accelerators. For IPU's [graphcore/examples](https://github.com/chelseajohn/examples) is used. Performance is measured in `images/s` and energy is measured in `Wh`.
 
