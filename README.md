@@ -19,7 +19,7 @@ CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-ju
 | NVIDIA Hopper node (NVLink)                       | 4 × H100 (94GB HBM2e) GPUs                        | `WAIH100` |
 | NVIDIA Grace-Hopper chip                          | 1 × GH200 (480GB LPDDR5X, 96GB HBM3) GPU          | `GH200`   |
 | NVIDIA Grace-Hopper node                          | 4 × GH200 (120GB LPDDR5X, 96GB HBM3) GPUs         | `JEDI`    |
-| AMD MI300X node                                   | 8 × MI300X (192GB HBM3) GPU Chiplets              | `MI300X`  |
+| AMD MI300X node                                   | 8 × MI300X (192GB HBM3) GPUs                      | `MI300X`  |
 | AMD MI300A node                                   | 4 × MI300A (128GB HBM3) APUs                      | `MI300A`  |
 | AMD MI200 node                                    | 4 × MI250 (128GB HBM2e) GPUs                      | `MI250`   |
 | Graphcore IPU-POD4 M2000                          | 4 × GC200 (512GB DDR4-3200) IPUs                  | `GC200`   |

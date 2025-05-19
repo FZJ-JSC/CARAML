@@ -65,7 +65,7 @@
     Available: 1 node
 
   aquavan1 MI300X AMD Node:
-    8× AMD MI300X GPU Chiplets
+    8× AMD MI300X GPU 
     CPU: Dual AMD EPYC 9474F CPU (96 cores)
     Memory: 2304 GiB RAM (24x 96 GB DDR5-5600)
     GPU: AMD MI300X (PCIe Gen5, OAM) with 192 GiB HBM3, 5300 GB/s bandwidth
