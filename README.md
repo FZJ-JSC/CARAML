@@ -1,6 +1,6 @@
 # CARAML 
 
-**C**ompact **A**utomated **R**eproducible **A**ssessment of **M**achine **L**earning (**CARAML**)  is a benchmark framework designed to assess AI workloads on novel accelerators. It has been developed and extensively tested on systems at the Jülich Supercomputing Centre (JSC).
+**C**ompact **A**utomated **R**eproducible **A**ssessment of **M**achine **L**earning (**CARAML**) is a benchmark framework designed to assess AI workloads on novel accelerators. It has been developed and tested extensively on systems at the Jülich Supercomputing Centre (JSC).
 
 CARAML leverages [JUBE](https://apps.fz-juelich.de/jsc/jube/docu/index.html), a scripting-based framework for creating benchmark sets, running them across different systems, and evaluating results. Additionally, it includes power/energy measurements through the [jpwr](https://github.com/FZJ-JSC/jpwr) tool.
 
@@ -29,11 +29,13 @@ CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-ju
 
 CARAML currently provides benchmarks implemented in Python:
 ### 1. Computer Vision: Image Classification (Training)
-The [image_classification](./image_classification/) model training benchmark is implemented in PyTorch. It is designed to test image classification models such as ResNet50 on various accelerators. For IPU's [graphcore/examples](https://github.com/chelseajohn/examples) is used. Performance is measured in `images/s` and energy is measured in `Wh`.
+The [image_classification](./image_classification/) model training benchmark is implemented in PyTorch. It is designed to test image classification models such as ResNet50 on various accelerators. For IPU's [graphcore/examples](https://github.com/chelseajohn/examples) is used. 
+
+Performance is measured in `images/s` and energy is measured in `Wh`.
 
 > **Note**: Support for the image classification benchmark in TensorFlow has been discontinued.
 
-### 2. GPT Language Model (LLM Training)
+### 2. Natural Language Processing: GPT Language Model (Training)
 The [LLM-training](./llm_training/) benchmark is implemented in PyTorch with:
 - [Megatron-LM](https://github.com/NVIDIA/Megatron-LM.git) with commit: `f7727433293427bef04858f67b2889fe9b177d88` and [patch](./aux/nvidia_megatron_energy_llm_fix.patch) applied for NVIDIA
 - [Megatron-LM-ROCm](https://github.com/bigcode-project/Megatron-LM.git) with commit: `21045b59127cd2d5509f1ca27d81fae7b485bd22` and [patch](./aux/amd_megatron_energy_llm_fix.patch) applied for AMD 
@@ -71,7 +73,7 @@ cd CARAML
    - `GC200` (for Graphcore)
 > **Note**: The `container` tag should ideally be used only once at the beginning to pull and set up the container.
 
-###  Image Classification
+###  Image Classification (Training)
 
 - To run the benchmark with defined configurations do
     ```bash
@@ -90,7 +92,7 @@ cd CARAML
   jube result image_classification/image_classification_torch_benchmark_run -i last
    ```
 
-### LLM-Training
+### LLM Training
 
 - To run the benchmark with defined configurations for `800M` GPT model with OSCAR data do:
     ```bash
@@ -115,9 +117,9 @@ cd CARAML
    ```
 
 # Results
-![LLM Training Benchmark](./assets/LLM_800M_all_8.png)
 
 ![Image Classsification: ResNet50](./assets/resnet_torch_all_9.png)
+![LLM Training Benchmark](./assets/LLM_800M_all_8.png)
  
 # JSC Specific Fixes
 In order to use PyTorch `torch run` API on JSC systems [fixed_torch_run.py](./llm_training/aux/fixed_torch_run.py) fix is required. The fix solves the issue defined [here](https://github.com/pytorch/pytorch/pull/81691).
