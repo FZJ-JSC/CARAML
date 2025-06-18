@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Image Classification PyTorch benchmark for 
-  JEDI-GH200 NVIDIA Node:
+  JUPITER-GH200 NVIDIA Node:
     4× NVIDIA GH200 Grace-Hopper Superchip 
     CPU: NVIDIA Grace (Arm Neoverse-V2), 72 cores at 3.1 GHz base frequency; 120 GB LPDDR5X memory at 512 GB/s (8532 MHz)
     GPU: NVIDIA Hopper H100, 132 multiprocessors, 96 GB HBM3 memory at 4 TB/s
       NVIDIA NVLink-C2C CPU-to-GPU link at 900 GB/s
     Network: 4× InfiniBand NDR200 (Connect-X7)
     TDP: 680 W (for full GH200 superchip)
-    Available: 44 nodes
+    Available: 5207 nodes
 
   JURECA-GH200 NVIDIA:
     1× NVIDIA GH200 Grace-Hopper Superchip
@@ -79,7 +79,7 @@
 
 Tags:
   system_name: 
-    `JEDI`, `GH200`, `WAIH100`,`H100`, `A100`, `MI250`, `GC200`, `MI300X`, MI300A'
+    `JUPITER`, `GH200`, `WAIH100`,`H100`, `A100`, `MI250`, `GC200`, `MI300X`, MI300A'
   `precision`: run all precision (fp32, tf32, fp16, bf16); default: fp16
   Compile Strategies (default: trace):
     `inductor`: compile with inductor backend
@@ -95,7 +95,7 @@ Tags:
   <benchmark name="torch_benchmark" outpath="image_classification_benchmark_run">
     <parameterset name="systemInfo">
       <parameter name="system_version" mode="shell">echo 2025.01</parameter>
-      <parameter name="system_name" type="str" tag="JEDI">JEDI</parameter>
+      <parameter name="system_name" type="str" tag="JUPITER">JUPITER</parameter>
       <parameter name="system_name" type="str" tag="GH200">GH200</parameter>
       <parameter name="system_name" type="str" tag="WAIH100">WAIH100</parameter>
       <parameter name="system_name" type="str" tag="H100">H100</parameter>
@@ -108,7 +108,7 @@ Tags:
     <parameterset name="systemParameter" init_with="platform.xml">
       <parameter name="nodes" type="int" separator=";" tag="!container" mode="python">
       { 
-        "JEDI": "2",
+        "JUPITER": "1",
         "GH200": "1",
         "WAIH100": "2",
         "H100": "1",
@@ -129,7 +129,7 @@ Tags:
       }["${system_name}"]</parameter>
       <parameter name="gpus_per_node" type="int" separator=";" mode="python">
       { 
-        "JEDI": "4",
+        "JUPITER": "4",
         "GH200": "1",
         "WAIH100": "4",
         "H100": "4" ,
@@ -143,7 +143,7 @@ Tags:
       <parameter name="tasks" type="int" separator=";" mode="python">${nodes}*${taskspernode}</parameter>
       <parameter name="threadspertask" type="int" tag="!container" mode="python">
       {
-        "JEDI": "72",
+        "JUPITER": "72",
         "GH200": "72",
         "WAIH100": "64",
         "H100": "72" ,
@@ -156,7 +156,7 @@ Tags:
       <parameter name="threadspertask" type="int" tag="container" mode="python">4</parameter>
       <parameter name="queue" mode="python">
       {
-        "JEDI": "all",
+        "JUPITER": "booster",
         "GH200": "dc-gh",
         "WAIH100": "dc-hwai",
         "H100": "dc-h100" ,
@@ -169,13 +169,13 @@ Tags:
       <parameter name="account" tag="!(WAIH100|MI300X|MI300A)">zam</parameter>
       <parameter name="account" tag="WAIH100">westai0005</parameter>
       <parameter name="account" tag="MI300X"></parameter>
-      <parameter name="timelimit" tag="!GC200+!container">00:20:00</parameter>
+      <parameter name="timelimit" tag="!GC200+!container">01:20:00</parameter>
       <parameter name="timelimit" tag="GC200+!container">01:20:00</parameter>
       <parameter name="timelimit" tag="(H100|GH200|MI250|GC200|MI300X|MI300A)+container">01:20:00</parameter>
       <parameter name="singularity_file" mode="python">
       { <!-- https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-02.html -->
         <!-- nvcr.io/nvidia/pytorch:24.02-py3 -->
-        "JEDI": "$root_dir/containers/ngc2402_pytorch23_cuda123_nccl219_py310_arm.sif",
+        "JUPITER": "$root_dir/containers/ngc2402_pytorch23_cuda123_nccl219_py310_arm.sif",
         "GH200": "$root_dir/containers/ngc2402_pytorch23_cuda123_nccl219_py310_arm.sif",
         <!-- https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-06.html -->
         <!-- nvcr.io/nvidia/pytorch:24.06-py3 -->
@@ -217,6 +217,7 @@ Tags:
       </parameter>
       <parameter name="additional_job_config" mode="text" tag="MI300X">#SBATCH --constraint="mi300x"</parameter>
       <parameter name="additional_job_config" mode="text" tag="MI300A">#SBATCH --constraint="mi300a"</parameter>
+      <parameter name="additional_job_config" mode="text" tag="JUPITER">#SBATCH --reservation="jureap_scale"</parameter>
     </parameterset>
 
     <parameterset name="modelParameter">
@@ -286,14 +287,14 @@ Tags:
       <!-- Check TRITON_LIBCUDA_PATH location in container -->
       <parameter name="compiler_flags" separator="!" tag="!(inductor|eager)">export LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LIBRARY_PATH; export TRITON_LIBCUDA_PATH=/usr/local/cuda/lib64/stubs; export TORCH_LOGS=+dynamo; export TORCHDYNAMO_VERBOSE=1</parameter>
       <parameter name="compiler_flags" separator="!" tag="(inductor|eager)"></parameter>
-      <parameter name="rdzv_conf" tag="!JEDI">--rdzv_conf=is_host=$(if ((SLURM_NODEID)); then echo False; else echo True; fi)</parameter>
-      <parameter name="rdzv_conf" tag="JEDI">--rdzv_conf=is_host=True</parameter>
-      <parameter name="masteri" tag="!(JEDI|GH200|MI300X|MI300A)">"${MASTER_ADDR}i"</parameter>
-      <parameter name="masteri" tag="JEDI|GH200|MI300X|MI300A">"${MASTER_ADDR}"</parameter>
+      <parameter name="rdzv_conf" tag="!JUPITER">--rdzv_conf=is_host=$(if ((SLURM_NODEID)); then echo False; else echo True; fi)</parameter>
+      <parameter name="rdzv_conf" tag="JUPITER">--rdzv_conf=is_host=True</parameter>
+      <parameter name="masteri" tag="!(JUPITER|GH200|MI300X|MI300A)">"${MASTER_ADDR}i"</parameter>
+      <parameter name="masteri" tag="JUPITER|GH200|MI300X|MI300A">"${MASTER_ADDR}"</parameter>
       <parameter name="packages" separator="!" mode="python">
       { 
         <!-- nvidia_arm_torch_requirements.txt -->
-        "JEDI": "$root_dir/nvidia_arm_torch_packages/local/lib/python3.10/dist-packages",
+        "JUPITER": "$root_dir/nvidia_arm_torch_packages/local/lib/python3.10/dist-packages",
         "GH200": "$root_dir/nvidia_arm_torch_packages/local/lib/python3.10/dist-packages",
         <!-- nvidia_x86_torch_requirements.txt -->
         "WAIH100": "$root_dir/nvidia_x86_torch_packages/local/lib/python3.10/dist-packages",
@@ -308,7 +309,7 @@ Tags:
       }["${system_name}"]</parameter>
       <parameter name="load_modules" separator="!" tag="!container" mode="python">
       {
-        "JEDI":    "${cpus_per_task}; ${ibcomm} ${cuda_devices}; ${python_path}; ${accelerator}; ${bench_path}; ${compiler_flags}",
+        "JUPITER":    "${cpus_per_task}; ${ibcomm} ${cuda_devices}; ${python_path}; ${accelerator}; ${bench_path}; ${compiler_flags}",
         "GH200":   "${cpus_per_task}; ${ibcomm} ${cuda_devices}; ${python_path}; ${accelerator}; ${bench_path}; ${compiler_flags}",
         "WAIH100": "${cpus_per_task}; ${ibcomm} ${cuda_devices}; ${python_path}; ${accelerator}; ${bench_path}; ${compiler_flags}",
         "H100":    "${cpus_per_task}; ${ibcomm} ${cuda_devices}; ${python_path}; ${accelerator}; ${bench_path}; ${compiler_flags}",
@@ -364,7 +365,7 @@ Tags:
       <parameter name="bind_dir" tag="!container+GC200" separator="!">$jube_benchmark_home,${folder}</parameter>
       <parameter name="args_starter" separator="!" tag="!container" mode="python">
       {
-        "JEDI": "--cpu_bind=socket,v --mpi=pmi2 apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_torch_wrap.sh ",
+        "JUPITER": "--cpu_bind=socket,v --mpi=pmi2 apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_torch_wrap.sh ",
         "GH200": "--cpu_bind=socket,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_torch_wrap.sh ",
         "WAIH100": "--disable-dcgm --cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_torch_wrap.sh ",
         "H100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_torch_wrap.sh " ,
@@ -404,11 +405,11 @@ Tags:
       <use from="platform.xml">executesub</use>
       <do  mode="shell" tag="GC200">printf "%s\n" '#!/bin/bash' "${container_env}" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/ipu_torch_wrap.sh</do>
       <do  mode="shell" tag="(H100|A100|WAIH100)">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_torch_wrap.sh</do>
-      <do  mode="shell" tag="(GH200|JEDI)">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_torch_wrap.sh</do>
+      <do  mode="shell" tag="(GH200|JUPITER)">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_torch_wrap.sh</do>
       <do  mode="shell" tag="MI250|MI300X|MI300A">printf "%s\n" "export MIOPEN_USER_DB_PATH=${jube_benchmark_home}/miopen_cache" "${container_env}" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/amd_torch_wrap.sh</do>
       <do  mode="shell" tag="GC200">chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/ipu_torch_wrap.sh </do>
       <do  mode="shell" tag="(H100|A100|WAIH100)">chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_torch_wrap.sh </do>
-      <do  mode="shell" tag="(GH200|JEDI)">chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_torch_wrap.sh </do>
+      <do  mode="shell" tag="(GH200|JUPITER)">chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_torch_wrap.sh </do>
       <do  mode="shell" tag="MI250|MI300X|MI300A">chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/amd_torch_wrap.sh </do>
       <do>$submit $submit_script</do>
       <do done_file="$done_file"></do>

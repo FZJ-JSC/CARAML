@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Imagenet Classification Tensorflow benchmark for 
-  JEDI-GH200 NVIDIA Node:
+  JUPITER-GH200 NVIDIA Node:
     4× NVIDIA GH200 Grace-Hopper Superchip 
     CPU: NVIDIA Grace (Arm Neoverse-V2), 72 cores at 3.1 GHz base frequency; 120 GB LPDDR5X memory at 512 GB/s (8532 MHz)
     GPU: NVIDIA Hopper H100, 132 multiprocessors, 96 GB HBM3 memory at 4 TB/s
       NVIDIA NVLink-C2C CPU-to-GPU link at 900 GB/s
     Network: 4× InfiniBand NDR200 (Connect-X7)
     TDP: 680 W (for full GH200 superchip)
-    Available: 44 nodes
+    Available: 5207 nodes
 
   JURECA-GH200 NVIDIA:
     1× NVIDIA GH200 Grace-Hopper Superchip
@@ -70,7 +70,7 @@
   <benchmark name="tensorflow_benchmark" outpath="image_classification_benchmark_run">
     <parameterset name="systemInfo">
       <parameter name="system_version" mode="shell">echo 2024.01</parameter>
-      <parameter name="system_name" type="str" tag="JEDI">JEDI</parameter>
+      <parameter name="system_name" type="str" tag="JUPITER">JUPITER</parameter>
       <parameter name="system_name" type="str" tag="GH200">GH200</parameter>
       <parameter name="system_name" type="str" tag="WAIH100">WAIH100</parameter>
       <parameter name="system_name" type="str" tag="H100">H100</parameter>
@@ -82,7 +82,7 @@
     <parameterset name="systemParameter" init_with="platform.xml">
       <parameter name="nodes" type="int" separator=";" tag="!container" mode="python">
       { 
-        "JEDI": "1;2",
+        "JUPITER": "1;2",
         "GH200": "1",
         "WAIH100": "1",
         "H100": "1" ,
@@ -99,7 +99,7 @@
       }["${system_name}"]</parameter>
       <parameter name="taskspernode" type="int" separator=";" tag="!container" mode="python">
       {
-        "JEDI": "1;2;3;4",
+        "JUPITER": "1;2;3;4",
         "GH200": "1",
         "WAIH100": "1;2;3;4",
         "H100": "1;2;3;4" ,
@@ -117,7 +117,7 @@
       <parameter name="tasks" type="int" separator=";" mode="python">${nodes}*${taskspernode}</parameter>
       <parameter name="threadspertask" type="int" tag="!container" mode="python">
       {
-        "JEDI": "72",
+        "JUPITER": "72",
         "GH200": "72",
         "WAIH100": "16",
         "H100": "4" ,
@@ -128,7 +128,7 @@
       <parameter name="threadspertask" type="int" tag="container" mode="python">4</parameter>
       <parameter name="queue" mode="python">
       {
-        "JEDI": "all",
+        "JUPITER": "all",
         "GH200": "dc-gh",
         "WAIH100": "dc-wai",
         "H100": "dc-h100" ,
@@ -146,7 +146,7 @@
       <parameter name="singularity_file" mode="python">
       { 
         <!-- https://docs.nvidia.com/deeplearning/frameworks/tensorflow-release-notes/rel-23-01.html -->
-        "JEDI": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38_arm.sif",
+        "JUPITER": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38_arm.sif",
         "GH200": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38_arm.sif",
         <!-- https://docs.nvidia.com/deeplearning/frameworks/tensorflow-release-notes/rel-23-01.html -->
         "WAIH100": "$root_dir/containers/ngc2301_tf115_cuda1201_nccl2165_py38.sif",
@@ -209,7 +209,7 @@
       <parameter name="packages" separator="!" mode="python">
       { 
         <!-- nvidia_arm_tensorflow_requirements.txt -->
-        "JEDI": "$jube_benchmark_home/nvidia_arm_tensorflow_packages/lib/python3.8/site-packages",
+        "JUPITER": "$jube_benchmark_home/nvidia_arm_tensorflow_packages/lib/python3.8/site-packages",
         "GH200": "$jube_benchmark_home/nvidia_arm_tensorflow_packages/lib/python3.8/site-packages",
         <!-- nvidia_x86_tensorflow_requirements.txt -->
         "WAIH100": "$jube_benchmark_home/nvidia_x86_tensorflow_packages/lib/python3.8/site-packages",
@@ -222,7 +222,7 @@
       }["${system_name}"]</parameter>
       <parameter name="load_modules" separator="!" tag="!container" mode="python">
       {
-        "JEDI":    "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}",
+        "JUPITER":    "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}",
         "GH200":   "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}",
         "WAIH100": "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}",
         "H100":    "${cuda_devices}; ${python_path};${accelerator}; ${bench_path}" ,
@@ -246,7 +246,7 @@
       <parameter name="bind_dir" tag="!container+synthetic" separator="!">$jube_benchmark_home,${folder}</parameter>
       <parameter name="args_starter" separator="!" tag="!container" mode="python">
       {
-        "JEDI": " --cpu_bind=socket,v --mpi=pmi2 apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh ",
+        "JUPITER": " --cpu_bind=socket,v --mpi=pmi2 apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh ",
         "GH200": "--cpu_bind=socket,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh ",
         "WAIH100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_tensorflow_wrap.sh ",
         "H100": "--cpu_bind=none,v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${bind_dir} --nv ${singularity_file} ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_tensorflow_wrap.sh " ,
@@ -288,15 +288,15 @@
       <use from="platform.xml">executesub</use>
       <do  mode="shell" tag="GC200+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/ipu_tensorflow_wrap.sh</do>
       <do  mode="shell" tag="(H100|A100|WAIH100)+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_tensorflow_wrap.sh</do>
-      <do  mode="shell" tag="(GH200|JEDI)+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="(GH200|JUPITER)+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh</do>
       <do  mode="shell" tag="MI250+synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/amd_tensorflow_wrap.sh</do>
       <do  mode="shell" tag="GC200+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/ipu_tensorflow_wrap.sh</do>
       <do  mode="shell" tag="(H100|A100|WAIH100)+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_tensorflow_wrap.sh</do>
-      <do  mode="shell" tag="(GH200|JEDI)+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh</do>
+      <do  mode="shell" tag="(GH200|JUPITER)+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh</do>
       <do  mode="shell" tag="MI250+!synthetic">printf "%s\n" "export PYTHONPATH=${packages}:\$PYTHONPATH" "${data_path}" "\$*" > ${jube_benchmark_home}/${jube_wp_relpath}/amd_tensorflow_wrap.sh</do>
       <do  mode="shell" tag="GC200"> chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/ipu_tensorflow_wrap.sh </do>
       <do  mode="shell" tag="(H100|A100|WAIH100)"> chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_x86_tensorflow_wrap.sh </do>
-      <do  mode="shell" tag="(GH200|JEDI)"> chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh </do>
+      <do  mode="shell" tag="(GH200|JUPITER)"> chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/nvidia_arm_tensorflow_wrap.sh </do>
       <do  mode="shell" tag="MI250"> chmod a+rwx ${jube_benchmark_home}/${jube_wp_relpath}/amd_tensorflow_wrap.sh </do>
       <do>$submit $submit_script</do>
       <do done_file="$done_file"></do>

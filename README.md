@@ -1,13 +1,12 @@
-# CARAML 
+# CARAML
 
 **C**ompact **A**utomated **R**eproducible **A**ssessment of **M**achine **L**earning (**CARAML**) is a benchmark framework designed to assess AI workloads on novel accelerators. It has been developed and tested extensively on systems at the Jülich Supercomputing Centre (JSC).
 
-CARAML leverages [JUBE](https://apps.fz-juelich.de/jsc/jube/docu/index.html), a scripting-based framework for creating benchmark sets, running them across different systems, and evaluating results. Additionally, it includes power/energy measurements through the [jpwr](https://github.com/FZJ-JSC/jpwr) tool.
+CARAML leverages [JUBE](https://github.com/FZJ-JSC/JUBE), a scripting-based framework for creating benchmark sets, running them across different systems, and evaluating results. Additionally, it includes power/energy measurements through the [jpwr](https://github.com/FZJ-JSC/jpwr) tool.
 
 Paper: [Arxiv](https://arxiv.org/abs/2409.12994), [IEEE](https://ieeexplore.ieee.org/abstract/document/10820809)
 
-
-## Tested Accelerators:
+# Tested Accelerators
 
 CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JEDI](https://apps.fz-juelich.de/jsc/hps/jedi/index.html#), [WEST-AI Nodes](https://westai.de/services/hardware/) and [NHR-FAU](https://doc.nhr.fau.de/clusters/testcluster/). These include the accelerators: 
 
@@ -18,7 +17,7 @@ CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-ju
 | NVIDIA Hopper node (PCIe)                         | 4 × H100 (80GB HBM2e) GPUs                        | `H100`    |
 | NVIDIA Hopper node (NVLink)                       | 4 × H100 (94GB HBM2e) GPUs                        | `WAIH100` |
 | NVIDIA Grace-Hopper chip                          | 1 × GH200 (480GB LPDDR5X, 96GB HBM3) GPU          | `GH200`   |
-| NVIDIA Grace-Hopper node                          | 4 × GH200 (120GB LPDDR5X, 96GB HBM3) GPUs         | `JEDI`    |
+| NVIDIA Grace-Hopper node                          | 4 × GH200 (120GB LPDDR5X, 96GB HBM3) GPUs         | `JUPITER` |
 | AMD MI300X node                                   | 8 × MI300X (192GB HBM3) GPUs                      | `MI300X`  |
 | AMD MI300A node                                   | 4 × MI300A (128GB HBM3) APUs                      | `MI300A`  |
 | AMD MI200 node                                    | 4 × MI250 (128GB HBM2e) GPUs                      | `MI250`   |
@@ -45,15 +44,15 @@ Performance is measured in `tokens/s` and energy is recorded in `Wh`.
 
 # Requirements
 
-To run the benchmarks, you must install **JUBE**. Follow the [JUBE Installation Documentation](https://apps.fz-juelich.de/jsc/jube/docu/tutorial.html#installation) for setup instructions. The benchmarks are deployed using [Apptainer](https://apptainer.org/) containers and executed using **SLURM** on the tested accelerators.
+To run the benchmarks, install **JUBE** following [JUBE Installation Documentation](https://apps.fz-juelich.de/jsc/jube/docu/tutorial.html#installation) setup instructions. The benchmarks are deployed using [Apptainer](https://apptainer.org/) containers and executed using **SLURM** on the tested accelerators.
 
-### Dataset
+## Dataset
 
 - **Image Classification**: Synthetic data is generated on the host machine for benchmarking. The IPU tag `synthetic` additionally allows for the generation of synthetic data directly on the IPU.
   
 - **LLM Training**: A subset of the [OSCAR dataset](https://huggingface.co/bigscience/misc-test-data/resolve/main/stas/oscar-1GB.jsonl.xz) (790 samples, ~10 MB) is pre-processed using [GPT-2 tokenizers](./llm_training/aux/tokenizers/). This data is provided in the `llm_data` directory.
 
-# Execution 
+# Execution
 
 - Clone the repository and navigate into it:
 
@@ -73,7 +72,7 @@ cd CARAML
    - `GC200` (for Graphcore)
 > **Note**: The `container` tag should ideally be used only once at the beginning to pull and set up the container.
 
-###  Image Classification (Training)
+## Image Classification (Training)
 
 - To run the benchmark with defined configurations do
     ```bash
@@ -92,7 +91,7 @@ cd CARAML
   jube result image_classification/image_classification_torch_benchmark_run -i last
    ```
 
-### LLM Training
+## LLM Training
 
 - To run the benchmark with defined configurations for `800M` GPT model with OSCAR data do:
     ```bash
@@ -110,7 +109,6 @@ cd CARAML
     ```bash
     jube continue llm_training/llm_benchmark_{nvidia_amd,ipu}_run -i last
    ```
- 
 - To generate result do:
    ```bash
    jube result llm_training/llm_benchmark_{nvidia_amd,ipu}_run -i last
@@ -119,7 +117,7 @@ cd CARAML
 # Results
 
 ![Image Classsification: ResNet50](./assets/resnet_torch_all_9.png)
-![LLM Training Benchmark](./assets/LLM_800M_all_8.png)
+![LLM Training Benchmark](./assets/llm_800M_all_8.png)
  
 # JSC Specific Fixes
 In order to use PyTorch `torch run` API on JSC systems [fixed_torch_run.py](./llm_training/aux/fixed_torch_run.py) fix is required. The fix solves the issue defined [here](https://github.com/pytorch/pytorch/pull/81691).

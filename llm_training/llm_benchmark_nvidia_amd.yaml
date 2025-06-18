@@ -202,7 +202,7 @@ parameterset:
         _: "{'JUPITER': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128', 'MI250': '48', 'MI300X': '48', 'MI300A': '48'}['${system_name}']"}
       - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
       - {name: timelimit,        tag: "container",         _: "02:00:00"}
-      - {name: timelimit,        tag: "!container",         _: "01:14:00"} # set time limit +4mins than exit_duration
+      - {name: timelimit,        tag: "!container",         _: "01:15:00"} # set time limit +15mins than exit_duration
       - {name: oottime,          type: int,                _: 120}
       - {name: ootsignal,        type: int,                _: 12}
       - {name: outlogfile,                                _: "job.out"}
@@ -501,7 +501,7 @@ result:
         - {title: "EnergyFile",  _: energy_file_path}
         # - {title: "Energy/Device(Wh)",  _: energy_list_reimann}
         # - {title: "Energy_counter/Device(Wh)", tag: "MI250|MI300X|MI300A",  _: energy_list_counter}
-
+        
 step:
 
     - name: get_container

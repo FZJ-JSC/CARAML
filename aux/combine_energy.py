@@ -23,7 +23,7 @@ def main():
 
     args = parse_args()
 
-    dfs = [pd.read_csv(csv_file).T.reset_index(drop=True) for csv_file in args.files]
+    dfs = [pd.read_csv(csv_file, header=None).T.reset_index(drop=True) for csv_file in args.files]
 
 
     for df in dfs:

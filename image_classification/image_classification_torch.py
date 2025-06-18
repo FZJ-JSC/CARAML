@@ -341,7 +341,7 @@ def main():
       from jpwr.gpu.pynvml import power
       method_list.append(power())
       gpu_name = "NVIDIA"
-    if os.getenv("ACCELERATOR") in ["GH200", "JEDI"]:
+    if os.getenv("ACCELERATOR") in ["GH200", "JUPITER"]:
       from jpwr.sys.gh import power
       method_list.append(power())
     
