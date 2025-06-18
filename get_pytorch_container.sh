@@ -112,6 +112,16 @@ elif [[ ! -f $PYTORCH_PACKAGES_FILE_AMD  && ( "$ACCELERATOR" = "MI250" || "$ACCE
                     --no-cache-dir \
                     -r $ROOT_DIR/requirements/amd_torch_requirements.txt \
                     >&2
+    # Installing FlashAttention
+    cd $PYTORCH_PACKAGES_AMD/lib/python*/site-packages &&\
+    git clone https://github.com/ROCm/flash-attention.git &&\ 
+    cd flash-attention &&\
+    git checkout main_perf
+    apptainer exec --env FLASH_ATTENTION_TRITON_AMD_ENABLE="TRUE" \
+                    $PYTORCH_CONTAINER_FILE_AMD \
+                    python setup.py install \
+                    --prefix=$PYTORCH_PACKAGES_AMD
+    cd $BENCH_DIR
     touch $PYTORCH_PACKAGES_FILE_AMD
     echo "Done building additional packages for $ACCELERATOR in $PYTORCH_PACKAGES_AMD " >&2
 elif ! [ -f $PYTORCH_PACKAGES_FILE_NVIDIA_X86 ] && [[ " ${NVIDIA_X86_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
