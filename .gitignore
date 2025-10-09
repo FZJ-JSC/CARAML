@@ -1,45 +1,54 @@
+# =========================================
+# Containers
+# =========================================
 containers*
-llm_training/llm_benchmark_nvidia_amd_run/
-llm_training/llm_benchmark_ipu_run/
-llm_training/ipu_gc200_cache 
-ipu_torch_packages
-amd_torch_packages
-nvidia_x86_torch_packages
-nvidia_arm_torch_packages
-ipu_torch_packages_installed
-amd_torch_packages_installed
-nvidia_x86_torch_packages_installed
-/nvidia_arm_torch_packages_installed
-ipu_torch_wrap.sh
-amd_torch_wrap.sh
-nvidia_x86_torch_wrap.sh
-nvidia_arm_torch_wrap.sh
-llm_training/Megatron-LM/
-llm_training/Megatron-LM-ROCm/
-llm_training/output/
-llm_training/megatron_lm_patch_applied
-llm_training/megatron_rocm_patch_applied
-llm_training/llm_nvidia_build_done
-llm_training/llm_amd_build_done
-llm_training/llm_data/index-cache
-pytorch_container_done
-image_classification/tf_image_classification*
-image_classification/amd_tensorflow_packages*
-image_classification/ipu_gc200_cache
-tensorflow_container_done
-image_classification/ipu_tensorflow_packages*
-image_classification/ipu_tensorflow_wrap.sh
-image_classification/amd_tensorflow_wrap.sh
-image_classification/nvidia_x86_tensorflow_wrap.sh
-image_classification/nvidia_arm_tensorflow_wrap.sh
-image_classification/nvidia_x86_tensorflow_packages*
-image_classification/nvidia_x86_torch_packages*
-image_classification/nvidia_arm_tensorflow_packages*
-image_classification/image_classification_benchmark_run
+*_container_done
+
+# =========================================
+# LLM Training
+# =========================================
+llm_training/**/llm_benchmark_*_run/
+llm_training/**/output/
+llm_training/**/result/*.png
+llm_training/**/llm_data/*.npy
+llm_training/**/index-cache
+llm_training/**/Megatron-LM*/
+llm_training/**/*_patch_applied
+llm_training/**/*_build_done
+llm_training/**/ipu_gc200_cache
+
+# =========================================
+# Image Classification
+# =========================================
+image_classification/**/tf_image_classification*
+image_classification/**/ipu_gc200_cache
+image_classification/**/image_classification_benchmark_run
+image_classification/**/result/*.{png,svg}
+image_classification/*installed
+
+# =========================================
+# Operator Benchmark
+# =========================================
+operator_benchmark/**/fno_benchmark_*_run
+operator_benchmark/**/*installed
+operator_benchmark/**/*done
+operator_benchmark/**/*_packages
+operator_benchmark/**/*_wrap.sh
+
+# =========================================
+# Packages & Wrap Scripts
+# =========================================
+*_torch_packages*
+*_torch_packages_installed
+*_torch_wrap.sh
+image_classification/**/*_tensorflow_packages*
+image_classification/**/*_torch_packages*
+image_classification/**/*_tensorflow_wrap.sh
+
+# =========================================
+# Cache / Miscellaneous
+# =========================================
+miopen_cache
 *.csv
 *.poplar_exec
-image_classification/result/*.png
-image_classification/result/*.svg
-llm_training/result/*.png
-llm_training/llm_data/*.npy
-miopen_cache
+

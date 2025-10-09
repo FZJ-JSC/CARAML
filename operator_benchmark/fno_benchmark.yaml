@@ -1,0 +1,199 @@
+name:    fno-nvidia
+outpath: fno_benchmark_nvidia_run
+comment: fno benchmark jube script for NVIDIA-A100,H100,GH200 
+
+parameterset:
+  - name: systemInfo
+    parameter:
+      - {name: system_name, type: str, tag: "JUPITER", _: "JUPITER"}
+      - {name: system_name, type: str, tag: "GH200",   _: "GH200"}
+      - {name: system_name, type: str, tag: "WAIH100", _: "WAIH100"}
+      - {name: system_name, type: str, tag: "H100",    _: "H100"}
+      - {name: system_name, type: str, tag: "A100",    _: "A100"}
+      - {name: system_version,         mode: shell,    _: "echo 2025.01"}
+
+  - name: modelParameter
+    parameter:
+      - {name: code_repo, _: "${jube_benchmark_home}/operator_learning"}
+      - {name: config,    _: $code_repo/config/electrostatic_plasma1d_pic.yaml} # change to required config
+
+  - name: systemParameter
+    init_with: platform.xml
+    parameter:
+      - {name: account,         tag: "!WAIH100",          _: "zam"}
+      - {name: account,         tag: "WAIH100",           _: "westai0049"}
+      - {name: queue,           mode: python,
+         _: "{'JUPITER': 'jureap', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'dc-gpu'}['${system_name}']"}
+      - {name: nodes,            type: int, tag: "container",   _: 1}
+      - {name: nodes,            type: int, tag: "!container", separator: ";",   _: 1}
+      - {name: gpus_per_node,    type: int, tag: "container|single", _: 1}
+      - {name: gpus_per_node,    type: int, tag: "ddp", _: 4}
+      - {name: gres, _: "gpu:${gpus_per_node}"}
+      - {name: taskspernode,     type: int,                _: 1}
+      - {name: tasks,            type: int, mode: python, update_mode: step, _: "${taskspernode}*${nodes}"}
+      - {name: threadspertask,  type: int, mode: python, tag: "!container" ,
+        _: "{'JUPITER': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128'}['${system_name}']"}
+      - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
+      - {name: timelimit,        tag: "container",         _: "02:00:00"}
+      - {name: timelimit,        tag: "!container",         _: "00:15:00"} 
+      - {name: oottime,          type: int,                _: 120}
+      - {name: ootsignal,        type: int,                _: 12}
+      - {name: outlogfile,                                _: "job.out"}
+      - {name: outerrfile,                                _: "job.err"}
+      - {name: ready_file,                _: "ready"}
+      - {name: error_file,                _: "error"}
+      - {name: root_dir,            type: str,               _: "${jube_benchmark_home}/.."}
+      # singularity images - fixed duplicate .sif
+      - {name: singularity_file, type: str, tag: "JUPITER|GH200",
+         _: "${root_dir}/containers/ngc2508_pytorch28_cuda13_nccl2277_py312_arm.sif"}
+      - {name: singularity_file, type: str, tag: "WAIH100|H100|A100", 
+         _: "${root_dir}/containers/ngc2508_pytorch28_cuda13_nccl2277_py312.sif"}
+
+      - name: ibcomm
+        tag: "!GH200"
+        _: |
+          # setting IB for out of band communication
+          export NCCL_SOCKET_IFNAME=ib0
+          export GLOO_SOCKET_IFNAME=ib0
+      - name: ibcomm
+        tag: "GH200"
+        _: ""
+
+      - name: rdzv_conf
+        tag: "!JUPITER"
+        separator: "!"
+        _: >
+          is_host=$(if ((SLURM_NODEID)); then echo False; else echo True; fi)
+      - name: rdzv_conf
+        tag: "JUPITER"
+        _: >
+          is_host=True 
+
+      - name: masteri
+        tag: "!(JUPITER|H100)"
+        _: |
+          MASTER_ADDR="${MASTER_ADDR}i"
+      - name: masteri
+        tag: "JUPITER"
+        _: ""
+
+      - name: preprocess
+        mode: text
+        tag: "!container"
+        update_mode: step
+        separator: |
+        _: |
+          echo "START TIME: $(date)"
+          echo "Submitted batch job $${SLURM_JOBID}"
+          export SRUN_CPUS_PER_TASK=$${SLURM_CPUS_PER_TASK}
+    
+          if [ "x$$BENCH_DIR" = "x" ]; then
+              echo "BENCH_DIR is not set. Please set it to the operator_learning directory of benchmark" >&2
+              exit 1
+          fi
+
+          export MASTER_ADDR="$$(scontrol show hostnames "$$SLURM_JOB_NODELIST" | head -n 1)"
+          $masteri
+          export MASTER_PORT=6000
+          export LAUNCHER_DDP="python3.12 $BENCH_DIR/../aux/fixed_torch_run.py \
+              --nproc_per_node $gpus_per_node \
+              --nnodes $nodes \
+              --node_rank $SLURM_PROCID \
+              --rdzv_endpoint $MASTER_ADDR:$MASTER_PORT \
+              --rdzv_backend c10d \
+              --rdzv_conf=$rdzv_conf \
+              --max_restarts 0 \
+              --tee 3 \
+              "
+          export LAUNCHER="python3.12"
+          export CMD=" \
+              $code_repo/scripts/train.py --config=$config 
+              "
+
+      - name: env
+        mode: shell
+        separator: "!"
+        _: |
+           echo "export BENCH_DIR=${jube_benchmark_home}"
+           echo "export ACCELERATOR=${system_name}"
+           echo "export CUDA_VISIBLE_DEVICES=0,1,2,3"
+           echo "export TORCH_NCCL_ASYNC_ERROR_HANDLING=1"
+           exho "export OMP_NUM_THREADS=1"
+           echo "${ibcomm}"
+
+      - name: executable
+        mode: python
+        separator: ";"
+        tag: "ddp"
+        update_mode: step
+        _:
+          "{'train': \" \\\"$$LAUNCHER_DDP $$CMD\\\" \"}['$jube_step_name']"
+      - name: executable
+        mode: python
+        separator: ";"
+        tag: "single"
+        update_mode: step
+        _:
+          "{'train': \" \\\"$$LAUNCHER $$CMD\\\" \"}['$jube_step_name']"
+      - name: executable
+        mode: python
+        separator: "!"
+        tag: "container"
+        update_mode: step
+        _: "{'setup_env': 'bash ${jube_benchmark_home}/setup_fno_env.sh'}['${jube_step_name}']"
+      
+  - name: executeset
+    init_with: platform.xml
+    parameter:
+      - name: args_starter
+        mode: text
+        tag: "JUPITER+!container"
+        separator: |
+        _: |
+          --cpu_bind=v --mpi=pmi2 apptainer exec --bind=${jube_benchmark_home},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_fno_wrap.sh
+      - name: args_starter
+        mode: text
+        tag: "(WAIH100|A100)+!container"
+        separator: |
+        _: |
+          --disable-dcgm --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_fno_wrap.sh
+      - name: args_starter
+        mode: text
+        tag: "(H100|GH200)+!container"
+        separator: |
+        _: |
+          --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_fno_wrap.sh
+      
+step:
+  - name: setup_env
+    tag: container+(H100|GH200)
+    iterations: 1
+    use:
+      - systemInfo
+      - systemParameter
+      - executeset
+      - from: platform.xml
+        _: jobfiles
+      - from: platform.xml
+        _: executesub
+    do:
+      done_file:  $ready_file
+      error_file: $error_file
+      _:          $submit $submit_script     
+  
+  - name: train
+    tag: "(A100|H100|WAIH100|GH200|JUPITER)+!container"
+    iterations: 1
+    use:
+      - systemInfo
+      - modelParameter
+      - systemParameter
+      - executeset
+      - from: platform.xml
+        _: jobfiles
+      - from: platform.xml
+        _: executesub
+    do:
+      done_file:  $ready_file
+      error_file: $error_file
+      _:          $submit $submit_script
