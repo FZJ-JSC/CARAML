@@ -458,6 +458,7 @@ patternset:
    - name: efile_patterns
      pattern:
       - {name: energy_file_path, type: str, _: "Writing combined energy DataFrame to (.*)"}
+
 analyser:
   - name: analyse
     reduce: false
@@ -553,6 +554,7 @@ step:
           done_file:  $ready_file
           error_file: $error_file
           _:          $submit $submit_script
+    
     - name: combine_energy
       tag: "!container"
       iterations: 1

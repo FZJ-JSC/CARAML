@@ -1,6 +1,54 @@
 name:    fno-nvidia
 outpath: fno_benchmark_nvidia_run
 comment: fno benchmark jube script for NVIDIA-A100,H100,GH200 
+# FNO Benchmark for 
+  # JUPITER-GH200 NVIDIA Node:
+  #   4× NVIDIA GH200 Grace-Hopper Superchip 
+  #   CPU: NVIDIA Grace (Arm Neoverse-V2), 72 cores at 3.1 GHz base frequency; 120 GB LPDDR5X memory at 512 GB/s (8532 MHz)
+  #   GPU: NVIDIA Hopper H100, 132 multiprocessors, 96 GB HBM3 memory at 4 TB/s
+  #     NVIDIA NVLink-C2C CPU-to-GPU link at 900 GB/s
+  #   Network: 4× InfiniBand NDR200 (Connect-X7)
+  #   TDP: 680 W (for full GH200 superchip)
+  #   Available: 5207 nodes
+
+  # JURECA-GH200 NVIDIA:
+  #   1× NVIDIA GH200 Grace-Hopper Superchip
+  #   CPU: 1 × NVIDIA Grace, 72 cores
+  #   GPU: 1 × NVIDIA H100
+  #   Memory: 480 GiB LPDDR5X and 96 GiB HBM3
+  #   Network: 1 × NVIDIA ConnectX-7 @ 2 × EDR (200 Gbit/s)
+  #   Available: 1 chip
+
+  # JURECA-WAIH100 NVIDIA Node:
+  #   4x NVIDIA H100 Hopper-NVLink
+  #   CPU: 2x Intel Xeon Platinum 8462Y (Sapphire Rapids) CPUs
+  #    A total of 64 computing cores per node Ã 2.8 GHz (Base Freq.)
+  #   Memory: 512 GB DDR5 RAM per node
+  #   GPU: 4x NVIDIA H100 GPUs (incl. NVLink Interconnect);94 GB HBM2e per GPU
+  #   Available: 16 nodes
+
+  # JURECA-H100 NVIDIA Node:
+  #   1× NVIDIA H100 Hopper-PCIe
+  #   CPU: Intel Xeon Platinum Sapphire Rapid 8452Y processor; 2 sockets, 36 cores per socket,\
+  #    SMT-2 (total: 2×36×2 = 144 threads) (details for Intel Xeon Platinum 8452Y on Intel ARK)
+  #   Memory: 512 GiB DDR5-4800 RAM (of which at least 20 GB is taken by the system software stack,\
+  #    including the file system); 256 GB per socket;
+  #   GPU: 4 × NVIDIA H100 PCIe GPUs, each with 80 GB memory;
+  #   Network: 1 × 1x BlueField-2 ConnectX-6 DPU @ EDR (100 Gbit/s)
+  #   Available: 1 node
+
+  # JURECA-A100 NVIDIA Node:
+  #   4x NVIDIA A100 Ampere-SXM
+  #   CPU: 2× AMD EPYC 7742, 2× 64 cores, 2.25 GHz
+  #   Memory: 512 (16× 32) GB DDR4, 3200 MHz
+  #   GPU: 4× NVIDIA A100 GPU, 4× 40 GB HBM2e
+  #   Network: 2× InfiniBand HDR (NVIDIA Mellanox Connect-X6)
+  #   Available: 192 nodes
+# Tags
+  # System: JUPITER, GH200, WAIH100, H100, A100
+  # Problem: PIC1D, PIC2D, RBC2D, RBC3D, all
+  # Task: container (default: benchmark)
+  # Parallel: ddp (default: single)
 
 parameterset:
   - name: systemInfo
@@ -10,12 +58,27 @@ parameterset:
       - {name: system_name, type: str, tag: "WAIH100", _: "WAIH100"}
       - {name: system_name, type: str, tag: "H100",    _: "H100"}
       - {name: system_name, type: str, tag: "A100",    _: "A100"}
-      - {name: system_version,         mode: shell,    _: "echo 2025.01"}
-
+      - {name: system_version,         mode: shell,    _: "echo 2025.02"}
+  
+  - name: problemInfo
+    parameter:
+      - {name: problem, type: str, tag: "PIC1D", _: "PIC1D"} 
+      - {name: problem, type: str, tag: "PIC2D", _: "PIC2D"} 
+      - {name: problem, type: str, tag: "RBC2D", _: "RBC2D"} 
+      - {name: problem, type: str, tag: "RBC3D", _: "RBC3D"} 
+      - {name: problem, type: str, tag: "all", separator: ";", _: "PIC1D;PIC2D;RBC2D;RBC3D"}
+    
   - name: modelParameter
     parameter:
       - {name: code_repo, _: "${jube_benchmark_home}/operator_learning"}
-      - {name: config,    _: $code_repo/config/electrostatic_plasma1d_pic.yaml} # change to required config
+      - name: config
+        mode: python
+        update_mode: step
+        _: >
+          {'PIC1D': '${code_repo}/config/electrostatic_plasma1d_pic.yaml',
+          'PIC2D': '${code_repo}/config/electrostatic_plasma2d_pic.yaml',
+          'RBC2D': '${code_repo}/config/rbc2d_dedalus.yaml',
+          'RBC3D': '${code_repo}/config/rbc3d_pysdc.yaml'}['$problem']
 
   - name: systemParameter
     init_with: platform.xml
@@ -26,9 +89,10 @@ parameterset:
          _: "{'JUPITER': 'jureap', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'dc-gpu'}['${system_name}']"}
       - {name: nodes,            type: int, tag: "container",   _: 1}
       - {name: nodes,            type: int, tag: "!container", separator: ";",   _: 1}
-      - {name: gpus_per_node,    type: int, tag: "container|single", _: 1}
+      - {name: gpus_per_node,    type: int, tag: "container|!ddp", _: 1}
       - {name: gpus_per_node,    type: int, tag: "ddp", _: 4}
       - {name: gres, _: "gpu:${gpus_per_node}"}
+      - {name: total_devices, mode: python, type: int, _: "${gpus_per_node}*${nodes}"}
       - {name: taskspernode,     type: int,                _: 1}
       - {name: tasks,            type: int, mode: python, update_mode: step, _: "${taskspernode}*${nodes}"}
       - {name: threadspertask,  type: int, mode: python, tag: "!container" ,
@@ -36,14 +100,11 @@ parameterset:
       - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
       - {name: timelimit,        tag: "container",         _: "02:00:00"}
       - {name: timelimit,        tag: "!container",         _: "00:15:00"} 
-      - {name: oottime,          type: int,                _: 120}
-      - {name: ootsignal,        type: int,                _: 12}
       - {name: outlogfile,                                _: "job.out"}
       - {name: outerrfile,                                _: "job.err"}
       - {name: ready_file,                _: "ready"}
       - {name: error_file,                _: "error"}
       - {name: root_dir,            type: str,               _: "${jube_benchmark_home}/.."}
-      # singularity images - fixed duplicate .sif
       - {name: singularity_file, type: str, tag: "JUPITER|GH200",
          _: "${root_dir}/containers/ngc2508_pytorch28_cuda13_nccl2277_py312_arm.sif"}
       - {name: singularity_file, type: str, tag: "WAIH100|H100|A100", 
@@ -107,9 +168,15 @@ parameterset:
               "
           export LAUNCHER="python3.12"
           export CMD=" \
-              $code_repo/scripts/train.py --config=$config 
+              $code_repo/scripts/train.py --config=$config --benchmark
               "
-
+      - name: postprocess
+        mode: text
+        tag: "!container"
+        update_mode: step
+        separator: |
+        _: |
+          echo "STOP TIME: $(date)"
       - name: env
         mode: shell
         separator: "!"
@@ -127,14 +194,14 @@ parameterset:
         tag: "ddp"
         update_mode: step
         _:
-          "{'train': \" \\\"$$LAUNCHER_DDP $$CMD\\\" \"}['$jube_step_name']"
+          "{'benchmark': \" \\\"$$LAUNCHER_DDP $$CMD\\\" \"}['$jube_step_name']"
       - name: executable
         mode: python
         separator: ";"
-        tag: "single"
+        tag: "!ddp"
         update_mode: step
         _:
-          "{'train': \" \\\"$$LAUNCHER $$CMD\\\" \"}['$jube_step_name']"
+          "{'benchmark': \" \\\"$$LAUNCHER $$CMD\\\" \"}['$jube_step_name']"
       - name: executable
         mode: python
         separator: "!"
@@ -163,13 +230,95 @@ parameterset:
         separator: |
         _: |
           --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_fno_wrap.sh
-      
+
+patternset:
+  - name: perf_patterns
+    pattern:
+      - {name: jobid,           type: int,   _: "Submitted batch job $jube_pat_int"}
+      - {name: starttime,       type: string, _: "START TIME: (.*)"}
+      - {name: stoptime,        type: string, _: "STOP TIME: (.*)"}
+      - {name: epochs,          type: int,   _: "NumEpochs: *$jube_pat_int"}
+      - {name: epochtime,       type: float, _: "TotalEpochTime \\(s\\): *$jube_pat_fp"}
+      - {name: monitortime,     type: float, _: "TotalMonitorTime \\(s\\): *$jube_pat_fp"}
+      - {name: checkpointtime,  type: float, _: "TotalCheckpointTime \\(s\\): *$jube_pat_fp"}
+      - {name: computetime,     type: float, _: "TotalComputeTime \\(s\\): *$jube_pat_fp"}
+      - {name: samples,         type: int,   _: "TotalTimesteps: *$jube_pat_int"}
+      - {name: samples_per_sec, type: int, _: "Timesteps/s: *$jube_pat_fp"}
+      - {name: globalbs,        type: int,   _: "Using GlobalBatchSize: *$jube_pat_int"}
+      - {name: model_param,     type: float, _: "Total number of model parameters: *$jube_pat_fp"}
+      - {name: million_param,    type: float, mode: python, _: "$model_param/10**6"}
+      - {name: model_mem,       type: float, mode: python, _: "$model_param * 4.0/10**6"}
+      - name: runtime
+        type: float
+        mode: python
+        _: "round((time.mktime(time.strptime('$stoptime', '%a %b %d %I:%M:%S %p %Z %Y')) - time.mktime(time.strptime('$starttime', '%a %b %d %I:%M:%S %p %Z %Y'))) / 60.0, 2)"
+
+analyser:
+  - name: analyse
+    reduce: false
+    analyse:
+      - step: benchmark
+        file:
+          {use: perf_patterns, _: job.out}
+
+result:
+    use:
+      - analyse
+    table:
+      - name: result_csv
+        style: csv
+        column: 
+          - {title: "JobID", _: jobid}
+          - {title: "System", _: system_name}
+          - {title: "Version", _: system_version}
+          - {title: "Queue", _: queue}
+          - {title: "Nodes", _: nodes}
+          - {title: "DataParallel", _: total_devices}
+          - {title: "Problem", _: problem}
+          - {title: "Config", _: config}
+          - {title: "ModelParam (Million)", format: ".2f",_: million_param}
+          - {title: "ModelSize (MB)", format: ".2f", _: model_mem}
+          - {title: "GlobalBatchSize", _: globalbs}
+          - {title: "Runtime (min)", _: runtime}
+          - {title: "Epochs", _: epochs}
+          - {title: "EpochTime (s)", format: ".3f", _: epochtime}
+          - {title: "ComputeTime (s)", format: ".3f", _: computetime}
+          - {title: "MonitorTime (s)", format: ".3f",_: monitortime}
+          - {title: "CheckpointTime (s)", format: ".3f", _: checkpointtime}
+          - {title: "Timesteps",  _: samples}
+          - {title: "Timesteps/second", _: samples_per_sec}
+
+      - name: result_table
+        style: pretty
+        column: 
+          - {title: "JobID", _: jobid}
+          - {title: "System", _: system_name}
+          - {title: "Version", _: system_version}
+          - {title: "Queue", _: queue}
+          - {title: "Nodes", _: nodes}
+          - {title: "DataParallel", _: total_devices}
+          - {title: "Problem", _: problem}
+          - {title: "Config", _: config}
+          - {title: "ModelParam (Million)", format: ".2f",_: million_param}
+          - {title: "ModelSize (MB)", format: ".2f", _: model_mem}
+          - {title: "GlobalBatchSize", _: globalbs}
+          - {title: "Runtime (min)", _: runtime}
+          - {title: "Epochs", _: epochs}
+          - {title: "EpochTime (s)", format: ".3f", _: epochtime}
+          - {title: "ComputeTime (s)", format: ".3f", _: computetime}
+          - {title: "MonitorTime (s)", format: ".3f",_: monitortime}
+          - {title: "CheckpointTime (s)", format: ".3f", _: checkpointtime}
+          - {title: "Timesteps",  _: samples}
+          - {title: "Timesteps/second", _: samples_per_sec}
+
 step:
   - name: setup_env
     tag: container+(H100|GH200)
     iterations: 1
     use:
       - systemInfo
+      - problemInfo
+      - modelParameter
       - systemParameter
       - executeset
       - from: platform.xml
@@ -181,11 +330,12 @@ step:
       error_file: $error_file
       _:          $submit $submit_script     
   
-  - name: train
+  - name: benchmark
     tag: "(A100|H100|WAIH100|GH200|JUPITER)+!container"
     iterations: 1
     use:
       - systemInfo
+      - problemInfo
       - modelParameter
       - systemParameter
       - executeset
