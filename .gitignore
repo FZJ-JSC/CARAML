@@ -34,6 +34,7 @@ operator_benchmark/**/*installed
 operator_benchmark/**/*done
 operator_benchmark/**/*_packages
 operator_benchmark/**/*_wrap.sh
+operator_benchmark/operator_learning
 
 # =========================================
 # Packages & Wrap Scripts
