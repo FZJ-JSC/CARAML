@@ -244,6 +244,8 @@ patternset:
       - {name: computetime,     type: float, _: "TotalComputeTime \\(s\\): *$jube_pat_fp"}
       - {name: samples,         type: int,   _: "TotalTimesteps: *$jube_pat_int"}
       - {name: samples_per_sec, type: int, _: "Timesteps/s: *$jube_pat_fp"}
+      - {name: grid,            type: str, _: '-- grid shape\s*:\s*(\([^)]+\))'}
+      - {name: particle,        type: int, _: '-- inputShape\s*:\s*\[.*?(\d+)\s*\]'}
       - {name: globalbs,        type: int,   _: "Using GlobalBatchSize: *$jube_pat_int"}
       - {name: model_param,     type: float, _: "Total number of model parameters: *$jube_pat_fp"}
       - {name: million_param,    type: float, mode: python, _: "$model_param/10**6"}
@@ -278,6 +280,8 @@ result:
           - {title: "Config", _: config}
           - {title: "ModelParam (Million)", format: ".2f",_: million_param}
           - {title: "ModelSize (MB)", format: ".2f", _: model_mem}
+          - {title: "Grid", _: grid}
+          - {title: "Particles", _: particle}
           - {title: "GlobalBatchSize", _: globalbs}
           - {title: "Runtime (min)", _: runtime}
           - {title: "Epochs", _: epochs}
@@ -301,6 +305,8 @@ result:
           - {title: "Config", _: config}
           - {title: "ModelParam (Million)", format: ".2f",_: million_param}
           - {title: "ModelSize (MB)", format: ".2f", _: model_mem}
+          - {title: "Grid", _: grid}
+          - {title: "Particles", _: particle}
           - {title: "GlobalBatchSize", _: globalbs}
           - {title: "Runtime (min)", _: runtime}
           - {title: "Epochs", _: epochs}
