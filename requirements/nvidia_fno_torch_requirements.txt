@@ -12,12 +12,12 @@ mpi4py
 mpmath
 numpy
 pandas
-Pillow-SIMD
 py-cpuinfo
 pytest-benchmark
 pyvista
 PyYAML
 qmat
+ruamel.yaml
 safetensors
 scipy
 tensorboard

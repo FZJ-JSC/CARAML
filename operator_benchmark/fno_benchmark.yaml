@@ -61,6 +61,7 @@ parameterset:
       - {name: system_version,         mode: shell,    _: "echo 2025.02"}
   
   - name: problemInfo
+    tag: "!container"
     parameter:
       - {name: problem, type: str, tag: "PIC1D", _: "PIC1D"} 
       - {name: problem, type: str, tag: "PIC2D", _: "PIC2D"} 
@@ -69,6 +70,7 @@ parameterset:
       - {name: problem, type: str, tag: "all", separator: ";", _: "PIC1D;PIC2D;RBC2D;RBC3D"}
     
   - name: modelParameter
+    tag: "!container"
     parameter:
       - {name: code_repo, _: "${jube_benchmark_home}/operator_learning"}
       - name: config
@@ -79,6 +81,7 @@ parameterset:
           'PIC2D': '${code_repo}/config/electrostatic_plasma2d_pic.yaml',
           'RBC2D': '${code_repo}/config/rbc2d_dedalus.yaml',
           'RBC3D': '${code_repo}/config/rbc3d_pysdc.yaml'}['$problem']
+      - {name: use_amp, type: int, separator: ";", _: 0;1}
 
   - name: systemParameter
     init_with: platform.xml
@@ -86,7 +89,7 @@ parameterset:
       - {name: account,         tag: "!WAIH100",          _: "zam"}
       - {name: account,         tag: "WAIH100",           _: "westai0049"}
       - {name: queue,           mode: python,
-         _: "{'JUPITER': 'jureap', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'dc-gpu'}['${system_name}']"}
+         _: "{'JUPITER': 'jureap', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'dc-gpu-devel'}['${system_name}']"}
       - {name: nodes,            type: int, tag: "container",   _: 1}
       - {name: nodes,            type: int, tag: "!container", separator: ";",   _: 1}
       - {name: gpus_per_node,    type: int, tag: "container|!ddp", _: 1}
@@ -99,7 +102,7 @@ parameterset:
         _: "{'JUPITER': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128'}['${system_name}']"}
       - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
       - {name: timelimit,        tag: "container",         _: "02:00:00"}
-      - {name: timelimit,        tag: "!container",         _: "00:15:00"} 
+      - {name: timelimit,        tag: "!container",         _: "00:45:00"} 
       - {name: outlogfile,                                _: "job.out"}
       - {name: outerrfile,                                _: "job.err"}
       - {name: ready_file,                _: "ready"}
@@ -136,7 +139,7 @@ parameterset:
           MASTER_ADDR="${MASTER_ADDR}i"
       - name: masteri
         tag: "JUPITER"
-        _: ""
+        _: " "
 
       - name: preprocess
         mode: text
@@ -147,7 +150,8 @@ parameterset:
           echo "START TIME: $(date)"
           echo "Submitted batch job $${SLURM_JOBID}"
           export SRUN_CPUS_PER_TASK=$${SLURM_CPUS_PER_TASK}
-    
+          export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128,garbage_collection_threshold:0.8
+
           if [ "x$$BENCH_DIR" = "x" ]; then
               echo "BENCH_DIR is not set. Please set it to the operator_learning directory of benchmark" >&2
               exit 1
@@ -168,7 +172,10 @@ parameterset:
               "
           export LAUNCHER="python3.12"
           export CMD=" \
-              $code_repo/scripts/train.py --config=$config --benchmark
+              $code_repo/scripts/train.py \
+              --config=${config} \
+              --benchmark \
+              --use_amp=${use_amp} 
               "
       - name: postprocess
         mode: text
@@ -217,19 +224,25 @@ parameterset:
         tag: "JUPITER+!container"
         separator: |
         _: |
-          --cpu_bind=v --mpi=pmi2 apptainer exec --bind=${jube_benchmark_home},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_fno_wrap.sh
+          --cpu_bind=v --mpi=pmi2 apptainer exec --bind=${code_repo},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_arm_fno_wrap.sh
       - name: args_starter
         mode: text
         tag: "(WAIH100|A100)+!container"
         separator: |
         _: |
-          --disable-dcgm --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_fno_wrap.sh
+          --disable-dcgm --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${code_repo},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_x86_fno_wrap.sh
       - name: args_starter
         mode: text
-        tag: "(H100|GH200)+!container"
+        tag: "H100+!container"
         separator: |
         _: |
-          --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${jube_benchmark_home},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_fno_wrap.sh
+          --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${code_repo},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_x86_fno_wrap.sh
+      - name: args_starter
+        mode: text
+        tag: "GH200+!container"
+        separator: |
+        _: |
+          --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${code_repo},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_arm_fno_wrap.sh
 
 patternset:
   - name: perf_patterns
@@ -248,8 +261,12 @@ patternset:
       - {name: particle,        type: int, _: '-- inputShape\s*:\s*\[.*?(\d+)\s*\]'}
       - {name: globalbs,        type: int,   _: "Using GlobalBatchSize: *$jube_pat_int"}
       - {name: model_param,     type: float, _: "Total number of model parameters: *$jube_pat_fp"}
-      - {name: million_param,    type: float, mode: python, _: "$model_param/10**6"}
+      - {name: million_param,   type: float, mode: python, _: "$model_param/10**6"}
       - {name: model_mem,       type: float, mode: python, _: "$model_param * 4.0/10**6"}
+      - {name: fwd_mem,         type: float,  _: "CUDA Memory for Fwd Pass - Allocated: *$jube_pat_fp"}
+      - {name: bwd_mem,         type: float,  _: "CUDA Memory for Bwd Pass - Allocated: *$jube_pat_fp"}
+      - {name: act_mem,         type: float,  _: "Estimate Activations Memory: *$jube_pat_fp"}
+      - {name: mxp,             type: bool, mode: python,  _: "bool(${use_amp})"}
       - name: runtime
         type: float
         mode: python
@@ -269,6 +286,7 @@ result:
     table:
       - name: result_csv
         style: csv
+        sort: problem
         column: 
           - {title: "JobID", _: jobid}
           - {title: "System", _: system_name}
@@ -285,15 +303,20 @@ result:
           - {title: "GlobalBatchSize", _: globalbs}
           - {title: "Runtime (min)", _: runtime}
           - {title: "Epochs", _: epochs}
+          - {title: "MixedPrecision", _: mxp}
           - {title: "EpochTime (s)", format: ".3f", _: epochtime}
           - {title: "ComputeTime (s)", format: ".3f", _: computetime}
           - {title: "MonitorTime (s)", format: ".3f",_: monitortime}
           - {title: "CheckpointTime (s)", format: ".3f", _: checkpointtime}
           - {title: "Timesteps",  _: samples}
           - {title: "Timesteps/second", _: samples_per_sec}
+          - {title: "PeakFwdMem (MB)", format: ".2f", _: fwd_mem_avg}
+          - {title: "PersistentMem (MB)",format: ".2f", _: bwd_mem_avg}
+          - {title: "ActivationMem (MB)",format: ".2f", _: act_mem_avg}
 
       - name: result_table
         style: pretty
+        sort: problem
         column: 
           - {title: "JobID", _: jobid}
           - {title: "System", _: system_name}
@@ -310,12 +333,16 @@ result:
           - {title: "GlobalBatchSize", _: globalbs}
           - {title: "Runtime (min)", _: runtime}
           - {title: "Epochs", _: epochs}
+          - {title: "MixedPrecision", _: mxp}
           - {title: "EpochTime (s)", format: ".3f", _: epochtime}
           - {title: "ComputeTime (s)", format: ".3f", _: computetime}
           - {title: "MonitorTime (s)", format: ".3f",_: monitortime}
           - {title: "CheckpointTime (s)", format: ".3f", _: checkpointtime}
           - {title: "Timesteps",  _: samples}
           - {title: "Timesteps/second", _: samples_per_sec}
+          - {title: "PeakFwdMem (MB)", format: ".2f", _: fwd_mem_avg}
+          - {title: "PersistentMem (MB)",format: ".2f", _: bwd_mem_avg}
+          - {title: "ActivationMem (MB)",format: ".2f", _: act_mem_avg}
 
 step:
   - name: setup_env
@@ -323,8 +350,6 @@ step:
     iterations: 1
     use:
       - systemInfo
-      - problemInfo
-      - modelParameter
       - systemParameter
       - executeset
       - from: platform.xml

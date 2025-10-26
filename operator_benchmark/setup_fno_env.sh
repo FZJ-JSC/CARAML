@@ -16,9 +16,12 @@ PYTORCH_CONTAINER_FILE_NVIDIA_X86=$ROOT_DIR/containers/ngc2508_pytorch28_cuda13_
 PYTORCH_CONTAINER_FILE_NVIDIA_ARM=$ROOT_DIR/containers/ngc2508_pytorch28_cuda13_nccl2277_py312_arm.sif
 PYTORCH_CONTAINER_FILE_DONE=$BENCH_DIR/fno_container_done
 
-PYTORCH_PACKAGES_NVIDIA=$BENCH_DIR/nvidia_fno_packages
-PYTORCH_PACKAGES_FILE_NVIDIA=$BENCH_DIR/nvidia_fno_packages_installed
-DONE_FILE=$BENCH_DIR/fno_setup_done
+PYTORCH_PACKAGES_NVIDIA_x86=$BENCH_DIR/nvidia_fno_packages_x86
+PYTORCH_PACKAGES_NVIDIA_ARM=$BENCH_DIR/nvidia_fno_packages_arm
+PYTORCH_PACKAGES_FILE_NVIDIA_x86=$BENCH_DIR/nvidia_fno_packages_x86_installed
+PYTORCH_PACKAGES_FILE_NVIDIA_ARM=$BENCH_DIR/nvidia_fno_packages_arm_installed
+DONE_FILE_x86=$BENCH_DIR/fno_setup_x86_done
+DONE_FILE_ARM=$BENCH_DIR/fno_setup_arm_done
 
 if ! [ -d "$ROOT_DIR/containers" ]; then
     mkdir -p "$ROOT_DIR/containers"
@@ -65,63 +68,64 @@ rm -rf $APPTAINER_CACHEDIR
 rm -rf $APPTAINER_TMPDIR
 
 ##### Installing Requirements #####
-if ! [ -f $PYTORCH_PACKAGES_FILE_NVIDIA ] && \
-   { [[ " ${NVIDIA_X86_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]] || [[ " ${NVIDIA_ARM_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; }; then
+if [[ " ${NVIDIA_X86_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
+    CONTAINER=$PYTORCH_CONTAINER_FILE_NVIDIA_X86
+    PYTORCH_PACKAGES_NVIDIA=$PYTORCH_PACKAGES_NVIDIA_x86
+    PYTORCH_PACKAGES_FILE_NVIDIA=$PYTORCH_PACKAGES_FILE_NVIDIA_x86
+    NVIDIA_WRAP="$BENCH_DIR"/nvidia_x86_fno_wrap.sh
+    DONE_FILE=$DONE_FILE_x86
+else
+    CONTAINER=$PYTORCH_CONTAINER_FILE_NVIDIA_ARM
+    PYTORCH_PACKAGES_NVIDIA=$PYTORCH_PACKAGES_NVIDIA_ARM
+    PYTORCH_PACKAGES_FILE_NVIDIA=$PYTORCH_PACKAGES_FILE_NVIDIA_ARM
+    NVIDIA_WRAP="$BENCH_DIR"/nvidia_arm_fno_wrap.sh
+    DONE_FILE=$DONE_FILE_ARM
+fi
 
+if [ -f $DONE_FILE ]; then
+    echo "No additional packages required for $ACCELERATOR" >&2
+else
     mkdir -p $PYTORCH_PACKAGES_NVIDIA
     export PIP_USER=0
-
-    if [[ " ${NVIDIA_X86_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
-        CONTAINER=$PYTORCH_CONTAINER_FILE_NVIDIA_X86
-    else
-        CONTAINER=$PYTORCH_CONTAINER_FILE_NVIDIA_ARM
-    fi
-
     apptainer exec $CONTAINER \
         python -m pip install \
         --prefix=$PYTORCH_PACKAGES_NVIDIA \
         --no-cache-dir \
         -r $ROOT_DIR/requirements/nvidia_fno_torch_requirements.txt \
         >&2
-    
-    
-    # clone operator_learning code
-    cd $BENCH_DIR
-    if ! [ -d "operator_learning" ]; then
-        git clone -b profiling https://github.com/chelseajohn/operator_learning.git operator_learning
-        cd operator_learning
-        apptainer exec $CONTAINER \
-            python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
-        cd ..
-    else
-        echo "operator_learning directory exists at $BENCH_DIR/ !" >&2
-    fi
+fi
 
-    # clone pySDC 
-    cd $PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages/
-    if ! [ -d "pySDC" ]; then
-        git clone https://github.com/Parallel-in-Time/pySDC.git pySDC
-        cd pySDC
-        apptainer exec $CONTAINER \
-            python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
-    else
-        echo "operator_learning directory exists at $BENCH_DIR/ !" >&2
-    fi
-    cd $BENCH_DIR
-    touch $PYTORCH_PACKAGES_FILE_NVIDIA
-    echo "Done building additional packages for $ACCELERATOR in $PYTORCH_PACKAGES_NVIDIA" >&2
+# clone operator_learning code
+cd $BENCH_DIR
+if ! [ -d "operator_learning" ]; then
+    git clone -b profiling https://github.com/chelseajohn/operator_learning.git operator_learning
+    cd operator_learning
+    apptainer exec $CONTAINER \
+        python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
+    cd ..
 else
-    echo "No additional packages required for $ACCELERATOR" >&2
+    echo "operator_learning directory exists at $BENCH_DIR/ !" >&2
 fi
 
-
+# clone pySDC 
+cd $PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages/
+if ! [ -d "pySDC" ]; then
+    git clone https://github.com/Parallel-in-Time/pySDC.git pySDC
+    cd pySDC
+    apptainer exec $CONTAINER \
+        python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
+else
+    echo "operator_learning directory exists at $BENCH_DIR/ !" >&2
+fi
+cd $BENCH_DIR
+touch $PYTORCH_PACKAGES_FILE_NVIDIA
+echo "Done building additional packages for $ACCELERATOR in $PYTORCH_PACKAGES_NVIDIA" >&2
 # Creating wrapper for external torch packages
-if ! [ -f "$BENCH_DIR"/nvidia_fno_wrap.sh ]; then
+if ! [ -f $NVIDIA_WRAP ]; then
     echo "creating NVIDIA Container wrapper"
-    printf "%s\n"  "export PYTHONPATH=$PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages:$BENCH_DIR/operator_learning:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/nvidia_fno_wrap.sh
-    chmod u+rwx "$BENCH_DIR"/nvidia_fno_wrap.sh
+    printf "%s\n"  "export PYTHONPATH=$PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages:$BENCH_DIR/operator_learning:\$PYTHONPATH" "\$*" > $NVIDIA_WRAP
+    chmod u+rwx $NVIDIA_WRAP
 fi
-
 touch $DONE_FILE
 
 echo "FNO benchmarking setup for NVIDIA $ACCELERATOR done!" >&2
