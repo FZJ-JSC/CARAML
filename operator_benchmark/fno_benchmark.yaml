@@ -1,0 +1,465 @@
+name:    fno-nvidia
+outpath: fno_benchmark_nvidia_run
+comment: fno benchmark jube script for NVIDIA-A100,H100,GH200 
+# FNO Benchmark for 
+  # JUPITER-GH200 NVIDIA Node:
+  #   4× NVIDIA GH200 Grace-Hopper Superchip 
+  #   CPU: NVIDIA Grace (Arm Neoverse-V2), 72 cores at 3.1 GHz base frequency; 120 GB LPDDR5X memory at 512 GB/s (8532 MHz)
+  #   GPU: NVIDIA Hopper H100, 132 multiprocessors, 96 GB HBM3 memory at 4 TB/s
+  #     NVIDIA NVLink-C2C CPU-to-GPU link at 900 GB/s
+  #   Network: 4× InfiniBand NDR200 (Connect-X7)
+  #   TDP: 680 W (for full GH200 superchip)
+  #   Available: 5207 nodes
+
+  # JURECA-GH200 NVIDIA:
+  #   1× NVIDIA GH200 Grace-Hopper Superchip
+  #   CPU: 1 × NVIDIA Grace, 72 cores
+  #   GPU: 1 × NVIDIA H100
+  #   Memory: 480 GiB LPDDR5X and 96 GiB HBM3
+  #   Network: 1 × NVIDIA ConnectX-7 @ 2 × EDR (200 Gbit/s)
+  #   Available: 1 chip
+
+  # JURECA-WAIH100 NVIDIA Node:
+  #   4x NVIDIA H100 Hopper-NVLink
+  #   CPU: 2x Intel Xeon Platinum 8462Y (Sapphire Rapids) CPUs
+  #    A total of 64 computing cores per node Ã 2.8 GHz (Base Freq.)
+  #   Memory: 512 GB DDR5 RAM per node
+  #   GPU: 4x NVIDIA H100 GPUs (incl. NVLink Interconnect);94 GB HBM2e per GPU
+  #   Available: 16 nodes
+
+  # JURECA-H100 NVIDIA Node:
+  #   1× NVIDIA H100 Hopper-PCIe
+  #   CPU: Intel Xeon Platinum Sapphire Rapid 8452Y processor; 2 sockets, 36 cores per socket,\
+  #    SMT-2 (total: 2×36×2 = 144 threads) (details for Intel Xeon Platinum 8452Y on Intel ARK)
+  #   Memory: 512 GiB DDR5-4800 RAM (of which at least 20 GB is taken by the system software stack,\
+  #    including the file system); 256 GB per socket;
+  #   GPU: 4 × NVIDIA H100 PCIe GPUs, each with 80 GB memory;
+  #   Network: 1 × 1x BlueField-2 ConnectX-6 DPU @ EDR (100 Gbit/s)
+  #   Available: 1 node
+
+  # JURECA-A100 NVIDIA Node:
+  #   4x NVIDIA A100 Ampere-SXM
+  #   CPU: 2× AMD EPYC 7742, 2× 64 cores, 2.25 GHz
+  #   Memory: 512 (16× 32) GB DDR4, 3200 MHz
+  #   GPU: 4× NVIDIA A100 GPU, 4× 40 GB HBM2e
+  #   Network: 2× InfiniBand HDR (NVIDIA Mellanox Connect-X6)
+  #   Available: 192 nodes
+# Tags
+  # System: JUPITER, GH200, WAIH100, H100, A100
+  # Problem: PIC1D, PIC2D, RBC2D, RBC3D, all
+  # Task: container (default: benchmark)
+  # Parallel: ddp (default: single)
+  # Execution: eval (default: train)
+
+parameterset:
+  - name: systemInfo
+    parameter:
+      - {name: system_name, type: str, tag: "JUPITER", _: "JUPITER"}
+      - {name: system_name, type: str, tag: "GH200",   _: "GH200"}
+      - {name: system_name, type: str, tag: "WAIH100", _: "WAIH100"}
+      - {name: system_name, type: str, tag: "H100",    _: "H100"}
+      - {name: system_name, type: str, tag: "A100",    _: "A100"}
+      - {name: system_version,         mode: shell,    _: "echo 2025.02"}
+  
+  - name: problemInfo
+    tag: "!container"
+    parameter:
+      - {name: problem, type: str, tag: "PIC1D", _: "PIC1D"} 
+      - {name: problem, type: str, tag: "PIC2D", _: "PIC2D"} 
+      - {name: problem, type: str, tag: "RBC2D", _: "RBC2D"} 
+      - {name: problem, type: str, tag: "RBC3D", _: "RBC3D"} 
+      - {name: problem, type: str, tag: "all", separator: ";", _: "PIC1D;PIC2D;RBC2D;RBC3D"}
+    
+  - name: modelParameter
+    tag: "!container"
+    parameter:
+      - {name: code_repo, _: "${jube_benchmark_home}/operator_learning"}
+      - name: data
+        mode: python
+        update_mode: step
+        _: >
+          {'PIC1D': '${jube_benchmark_home}/fno_data/PIC1D_electrostatic.h5',
+          'PIC2D': '${jube_benchmark_home}/fno_data/PIC2D_electrostatic.h5',
+          'RBC2D': '${jube_benchmark_home}/fno_data/RBC2D_256x64_Ra1e7_dt1e-3_update.h5',
+          'RBC3D': '${jube_benchmark_home}/fno_data/RBC3D_64x64x32_Ra1e5_dt0_5_solution.h5'}['$problem']
+      - name: config
+        mode: python
+        update_mode: step
+        _: >
+          {'PIC1D': '${code_repo}/config/electrostatic_plasma1d_pic.yaml',
+          'PIC2D': '${code_repo}/config/electrostatic_plasma2d_pic.yaml',
+          'RBC2D': '${code_repo}/config/rbc2d_dedalus.yaml',
+          'RBC3D': '${code_repo}/config/rbc3d_pysdc.yaml'}['$problem']
+      - {name: use_amp, type: int, tag: "!eval", separator: ";", _: "0;1"}
+      - name: use_complex_amp
+        mode: python
+        separator: ";"
+        type: int
+        tag: "!eval"
+        update_mode: step
+        _: >
+          {'0': '0','1': '0'}['$use_amp']
+      - name: input_shape
+        mode: python
+        tag: "eval"
+        update_mode: step
+        _: >
+          {'PIC1D': '[20,2,100000]',
+          'PIC2D': '[8,3,100000]',
+          'RBC2D': '[20,4,256,64]',
+          'RBC3D': '[20,5,64,64,32]'}['$problem'].strip('[]').replace(',', ' ')
+      - {name: compile_train, type: int, separator: ";", tag: "!eval", _: "1"}
+      - {name: compile_eval, type: int, separator: ";", tag: "eval", _: "0;1"}
+      - name: compile_modes
+        type: str
+        separator: ";"
+        tag: "!eval"
+        mode: python
+        update_mode: step
+        _:  >
+          {'1' : 'default', 
+           '0' : 'eager'}['$compile_train'] 
+        #;reduce-overhead;max-autotune;max-autotune-no-cudagraphs
+      - name: compile_modes
+        type: str
+        separator: ";"
+        tag: "eval"
+        mode: python
+        update_mode: step
+        _:  >
+          {'1' : 'default;reduce-overhead;max-autotune;max-autotune-no-cudagraphs',
+           '0' : 'eager'}['$compile_eval']
+
+  - name: systemParameter
+    init_with: platform.xml
+    parameter:
+      - {name: account,         tag: "!WAIH100",          _: "zam"}
+      - {name: account,         tag: "WAIH100",           _: "westai0049"}
+      - {name: queue,           mode: python,
+         _: "{'JUPITER': 'jureap', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'dc-gpu'}['${system_name}']"}
+      - {name: nodes,            type: int, tag: "container",   _: 1}
+      - {name: nodes,            type: int, tag: "!container", separator: ";",   _: 1}
+      - {name: gpus_per_node,    type: int, tag: "container|!ddp", _: 1}
+      - {name: gpus_per_node,    type: int, tag: "ddp", _: 4}
+      - {name: gres, _: "gpu:${gpus_per_node}"}
+      - {name: total_devices, mode: python, type: int, _: "${gpus_per_node}*${nodes}"}
+      - {name: taskspernode,     type: int,                _: 1}
+      - {name: tasks,            type: int, mode: python, update_mode: step, _: "${taskspernode}*${nodes}"}
+      - {name: threadspertask,  type: int, mode: python, tag: "!container" ,
+        _: "{'JUPITER': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128'}['${system_name}']"}
+      - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
+      - {name: timelimit,        tag: "container",         _: "02:00:00"}
+      - {name: timelimit,        tag: "!container",         _: "00:45:00"} 
+      - {name: outlogfile,                                _: "job.out"}
+      - {name: outerrfile,                                _: "job.err"}
+      - {name: ready_file,                _: "ready"}
+      - {name: error_file,                _: "error"}
+      - {name: root_dir,            type: str,               _: "${jube_benchmark_home}/.."}
+      - {name: singularity_file, type: str, tag: "JUPITER|GH200",
+         _: "${root_dir}/containers/ngc2508_pytorch28_cuda13_nccl2277_py312_arm.sif"}
+      - {name: singularity_file, type: str, tag: "WAIH100|H100|A100", 
+         _: "${root_dir}/containers/ngc2508_pytorch28_cuda13_nccl2277_py312.sif"}
+
+      - name: ibcomm
+        tag: "!GH200"
+        _: |
+          # setting IB for out of band communication
+          export NCCL_SOCKET_IFNAME=ib0
+          export GLOO_SOCKET_IFNAME=ib0
+      - name: ibcomm
+        tag: "GH200"
+        _: ""
+
+      - name: rdzv_conf
+        tag: "!JUPITER"
+        separator: "!"
+        _: >
+          is_host=$(if ((SLURM_NODEID)); then echo False; else echo True; fi)
+      - name: rdzv_conf
+        tag: "JUPITER"
+        _: >
+          is_host=True 
+
+      - name: masteri
+        tag: "!(JUPITER|H100)"
+        _: |
+          MASTER_ADDR="${MASTER_ADDR}i"
+      - name: masteri
+        tag: "JUPITER"
+        _: " "
+
+      - name: preprocess
+        mode: text
+        tag: "!container"
+        update_mode: step
+        separator: |
+        _: |
+          echo "START TIME: $(date)"
+          echo "Submitted batch job $${SLURM_JOBID}"
+          export SRUN_CPUS_PER_TASK=$${SLURM_CPUS_PER_TASK}
+          export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128,garbage_collection_threshold:0.8
+
+          if [ "x$$BENCH_DIR" = "x" ]; then
+              echo "BENCH_DIR is not set. Please set it to the operator_learning directory of benchmark" >&2
+              exit 1
+          fi
+
+          export MASTER_ADDR="$$(scontrol show hostnames "$$SLURM_JOB_NODELIST" | head -n 1)"
+          $masteri
+          export MASTER_PORT=6000
+          export LAUNCHER_DDP="python3.12 $BENCH_DIR/../aux/fixed_torch_run.py \
+              --nproc_per_node $gpus_per_node \
+              --nnodes $nodes \
+              --node_rank $SLURM_PROCID \
+              --rdzv_endpoint $MASTER_ADDR:$MASTER_PORT \
+              --rdzv_backend c10d \
+              --rdzv_conf=$rdzv_conf \
+              --max_restarts 0 \
+              --tee 3 \
+              "
+          export LAUNCHER="python3.12"
+          export CMD=" \
+              $code_repo/scripts/train.py \
+              --config=${config} \
+              --dataFile=${data} \
+              --benchmark \
+              --use_amp=${use_amp} \
+              --use_complex_amp=${use_complex_amp} \
+              --compile_train=${compile_train} \
+              --compile_mode=${compile_modes}
+              "
+          export EVAL_CMD="\
+                $code_repo/scripts/benchmark/fno_compile.py \
+                --config=${config} \
+                --use_amp=0 \
+                --compile_eval=${compile_eval} \
+                --compile_train=0 \
+                --input_shape ${input_shape}
+                "
+      - name: postprocess
+        mode: text
+        tag: "!container"
+        update_mode: step
+        separator: |
+        _: |
+          echo "STOP TIME: $(date)"
+      - name: env
+        mode: shell
+        separator: "!"
+        _: |
+           echo "export BENCH_DIR=${jube_benchmark_home}"
+           echo "export ACCELERATOR=${system_name}"
+           echo "export CUDA_VISIBLE_DEVICES=0,1,2,3"
+           echo "export TORCH_NCCL_ASYNC_ERROR_HANDLING=1"
+           exho "export OMP_NUM_THREADS=1"
+           echo "${ibcomm}"
+
+      - name: executable
+        mode: python
+        separator: ";"
+        tag: "ddp+!eval"
+        update_mode: step
+        _:
+          "{'benchmark': \" \\\"$$LAUNCHER_DDP $$CMD\\\" \"}['$jube_step_name']"
+      - name: executable
+        mode: python
+        separator: ";"
+        tag: "!ddp+!eval"
+        update_mode: step
+        _:
+          "{'benchmark': \" \\\"$$LAUNCHER $$CMD\\\" \"}['$jube_step_name']"
+      - name: executable
+        mode: python
+        separator: ";"
+        tag: "eval"
+        update_mode: step
+        _:
+          "{'benchmark': \" \\\"$$LAUNCHER $$EVAL_CMD\\\" \"}['$jube_step_name']"
+      - name: executable
+        mode: python
+        separator: "!"
+        tag: "container"
+        update_mode: step
+        _: "{'setup_env': 'bash ${jube_benchmark_home}/setup_fno_env.sh'}['${jube_step_name}']"
+      
+  - name: executeset
+    init_with: platform.xml
+    parameter:
+      - name: args_starter
+        mode: text
+        tag: "JUPITER+!container"
+        separator: |
+        _: |
+          --cpu_bind=v --mpi=pmi2 apptainer exec --bind=${code_repo},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_arm_fno_wrap.sh
+      - name: args_starter
+        mode: text
+        tag: "(WAIH100|A100)+!container"
+        separator: |
+        _: |
+          --disable-dcgm --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${code_repo},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_x86_fno_wrap.sh
+      - name: args_starter
+        mode: text
+        tag: "H100+!container"
+        separator: |
+        _: |
+          --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${code_repo},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_x86_fno_wrap.sh
+      - name: args_starter
+        mode: text
+        tag: "GH200+!container"
+        separator: |
+        _: |
+          --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${code_repo},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_arm_fno_wrap.sh
+
+patternset:
+  - name: perf_patterns
+    pattern:
+      - {name: jobid,           type: int,   _: "Submitted batch job $jube_pat_int"}
+      - {name: starttime,       type: string, _: "START TIME: (.*)"}
+      - {name: stoptime,        type: string, _: "STOP TIME: (.*)"}
+      - {name: epochs,          type: int,   _: "NumEpochs: *$jube_pat_int"}
+      - {name: epochtime,       type: float, _: "TotalEpochTime \\(s\\): *$jube_pat_fp"}
+      - {name: monitortime,     type: float, _: "TotalMonitorTime \\(s\\): *$jube_pat_fp"}
+      - {name: checkpointtime,  type: float, _: "TotalCheckpointTime \\(s\\): *$jube_pat_fp"}
+      - {name: computetime,     type: float, _: "TotalComputeTime \\(s\\): *$jube_pat_fp"}
+      - {name: traintime,       type: float, _: "TotalTrainTime \\(s\\): *$jube_pat_fp"}
+      - {name: compiletime,     type: float, _: "MeanCompileTime \\(s\\): *$jube_pat_fp"}
+      - {name: trainsamples,    type: int,   _: "TotalTrainTimesteps: *$jube_pat_int"}
+      - {name: trainsamples_per_sec, type: int, _: 'TrainTimesteps/s: *(\d+)'}
+      - {name: samples,         type: int,   _: "TotalTimesteps: *$jube_pat_int"}
+      - {name: samples_per_sec, type: int, _: 'Timesteps/s: *(\d+)'}
+      - {name: grid,            type: str, _: '-- grid shape\s*:\s*(\([^)]+\))'}
+      - {name: particle,        type: int, _: '-- inputShape\s*:\s*\[.*?(\d+)\s*\]'}
+      - {name: globalbs,        type: int,   _: "Using GlobalBatchSize: *$jube_pat_int"}
+      - {name: model_param,     type: float, _: "Total number of model parameters: *$jube_pat_fp"}
+      - {name: million_param,   type: float, mode: python, _: "$model_param/10**6"}
+      - {name: model_mem,       type: float, mode: python, _: "$model_param * 4.0/10**6"}
+      - {name: fwd_mem,         type: float,  _: "CUDA Memory for Fwd Pass - Allocated: *$jube_pat_fp"}
+      - {name: bwd_mem,         type: float,  _: "CUDA Memory for Bwd Pass - Allocated: *$jube_pat_fp"}
+      - {name: act_mem,         type: float,  _: "Estimate Activations Memory: *$jube_pat_fp"}
+      - {name: mxp,             type: bool, mode: python,  _: "bool(${use_amp})"}
+      - {name: complex_mxp,     type: bool, mode: python,  _: "bool(${use_complex_amp})"}
+      - name: runtime
+        type: float
+        mode: python
+        _: "round((time.mktime(time.strptime('$stoptime', '%a %b %d %I:%M:%S %p %Z %Y')) - time.mktime(time.strptime('$starttime', '%a %b %d %I:%M:%S %p %Z %Y'))) / 60.0, 2)"
+
+analyser:
+  - name: analyse
+    reduce: false
+    analyse:
+      - step: benchmark
+        file:
+          {use: perf_patterns, _: job.out}
+
+result:
+    use:
+      - analyse
+    table:
+      - name: result_csv
+        style: csv
+        sort: problem
+        column: 
+          - {title: "JobID", _: jobid}
+          - {title: "System", _: system_name}
+          - {title: "Version", _: system_version}
+          - {title: "Queue", _: queue}
+          - {title: "Nodes", _: nodes}
+          - {title: "DataParallel", _: total_devices}
+          - {title: "Problem", _: problem}
+          - {title: "Config", _: config}
+          - {title: "ModelParam (Million)", format: ".2f",_: million_param}
+          - {title: "ModelSize (MB)", format: ".2f", _: model_mem}
+          - {title: "Grid", tag: "!eval", _: grid}
+          - {title: "Particles", tag: "!eval", _: particle}
+          - {title: "GlobalBatchSize", tag: "!eval", _: globalbs}
+          - {title: "InputShape", tag: "eval", _: input_shape}
+          - {title: "Runtime (min)", _: runtime}
+          - {title: "Epochs", tag: "!eval", _: epochs}
+          - {title: "MixedPrecision", tag: "!eval", _: mxp}
+          - {title: "ComplexMixedPrecision", tag: "!eval", _: complex_mxp}
+          - {title: "CompileMode",  _: compile_modes}
+          - {title: "MeanCompileTime (s)",  format: ".3f", _: compiletime}
+          - {title: "EpochTime (s)", tag: "!eval", format: ".3f", _: epochtime}
+          - {title: "TrainTime (s)",  tag: "!eval",format: ".3f", _: traintime}
+          - {title: "ComputeTime (s)", tag: "!eval", format: ".3f", _: computetime}
+          - {title: "MonitorTime (s)",  tag: "!eval",format: ".3f",_: monitortime}
+          - {title: "CheckpointTime (s)",  tag: "!eval",format: ".3f", _: checkpointtime}
+          - {title: "Timesteps",  tag: "!eval", _: samples}
+          - {title: "Timesteps/second",  tag: "!eval",_: samples_per_sec_last}
+          - {title: "TrainTimesteps",  tag: "!eval", _: trainsamples}
+          - {title: "TrainTimesteps/second", tag: "!eval", _: trainsamples_per_sec}
+          - {title: "PeakFwdMem (MB)", tag: "!eval", format: ".2f", _: fwd_mem_avg}
+          - {title: "PersistentMem (MB)", tag: "!eval",format: ".2f", _: bwd_mem_avg}
+          - {title: "ActivationMem (MB)", tag: "!eval",format: ".2f", _: act_mem_avg}
+
+      - name: result_table
+        style: pretty
+        sort: problem
+        column: 
+          - {title: "JobID", _: jobid}
+          - {title: "System", _: system_name}
+          - {title: "Version", _: system_version}
+          - {title: "Queue", _: queue}
+          - {title: "Nodes", _: nodes}
+          - {title: "DataParallel", _: total_devices}
+          - {title: "Problem", _: problem}
+          - {title: "Config", _: config}
+          - {title: "ModelParam (Million)", format: ".2f",_: million_param}
+          - {title: "ModelSize (MB)", format: ".2f", _: model_mem}
+          - {title: "Grid", tag: "!eval", _: grid}
+          - {title: "Particles", tag: "!eval", _: particle}
+          - {title: "GlobalBatchSize", tag: "!eval", _: globalbs}
+          - {title: "InputShape", tag: "eval", _: input_shape}
+          - {title: "Runtime (min)", _: runtime}
+          - {title: "Epochs", tag: "!eval", _: epochs}
+          - {title: "MixedPrecision", tag: "!eval",_: mxp}
+          - {title: "ComplexMixedPrecision", tag: "!eval", _: complex_mxp}
+          - {title: "CompileMode",  _: compile_modes}
+          - {title: "MeanCompileTime (s)",  format: ".3f", _: compiletime}
+          - {title: "EpochTime (s)", tag: "!eval", format: ".3f", _: epochtime}
+          - {title: "TrainTime (s)",  tag: "!eval",format: ".3f", _: traintime}
+          - {title: "ComputeTime (s)", tag: "!eval", format: ".3f", _: computetime}
+          - {title: "MonitorTime (s)",  tag: "!eval",format: ".3f",_: monitortime}
+          - {title: "CheckpointTime (s)",  tag: "!eval",format: ".3f", _: checkpointtime}
+          - {title: "Timesteps",  tag: "!eval", _: samples}
+          - {title: "Timesteps/second",  tag: "!eval",_: samples_per_sec_last}
+          - {title: "TrainTimesteps",  tag: "!eval", _: trainsamples}
+          - {title: "TrainTimesteps/second", tag: "!eval", _: trainsamples_per_sec}
+          - {title: "PeakFwdMem (MB)", tag: "!eval", format: ".2f", _: fwd_mem_avg}
+          - {title: "PersistentMem (MB)", tag: "!eval",format: ".2f", _: bwd_mem_avg}
+          - {title: "ActivationMem (MB)", tag: "!eval",format: ".2f", _: act_mem_avg}
+
+step:
+  - name: setup_env
+    tag: container+(H100|GH200)
+    iterations: 1
+    use:
+      - systemInfo
+      - systemParameter
+      - executeset
+      - from: platform.xml
+        _: jobfiles
+      - from: platform.xml
+        _: executesub
+    do:
+      done_file:  $ready_file
+      error_file: $error_file
+      _:          $submit $submit_script     
+  
+  - name: benchmark
+    tag: "(A100|H100|WAIH100|GH200|JUPITER)+!container"
+    iterations: 1
+    use:
+      - systemInfo
+      - problemInfo
+      - modelParameter
+      - systemParameter
+      - executeset
+      - from: platform.xml
+        _: jobfiles
+      - from: platform.xml
+        _: executesub
+    do:
+      done_file:  $ready_file
+      error_file: $error_file
+      _:          $submit $submit_script
