@@ -42,6 +42,11 @@ The [LLM-training](./llm_training/) benchmark is implemented in PyTorch with:
 
 Performance is measured in `tokens/s` and energy is recorded in `Wh`.
 
+### 3. Neural Operator: Fourier Neural Operator (FNO)
+The [operator-benchmark](./operator_benchmark/) is implemented in PyTorch with [operator_learning](https://github.com/chelseajohn/operator_learning) for NVIDIA systems. It enables comprehensive analysis of mixed-precision training and the performance impact of `torch.compile` during both training and inference of Fourier Neural Operator (FNO) models. The benchmark includes experiments on two representative problems: Rayleigh–Bénard convection (RBC) in 2D and 3D and plasma simulation using Particle-in-Cell (PIC) methods in 1D and 2D.
+
+Performance in measured in `timesteps/s`.
+
 # Requirements
 
 To run the benchmarks, install **JUBE** following [JUBE Installation Documentation](https://apps.fz-juelich.de/jsc/jube/docu/tutorial.html#installation) setup instructions. The benchmarks are deployed using [Apptainer](https://apptainer.org/) containers and executed using **SLURM** on the tested accelerators.
@@ -51,6 +56,8 @@ To run the benchmarks, install **JUBE** following [JUBE Installation Documentati
 - **Image Classification**: Synthetic data is generated on the host machine for benchmarking. The IPU tag `synthetic` additionally allows for the generation of synthetic data directly on the IPU.
   
 - **LLM Training**: A subset of the [OSCAR dataset](https://huggingface.co/bigscience/misc-test-data/resolve/main/stas/oscar-1GB.jsonl.xz) (790 samples, ~10 MB) is pre-processed using [GPT-2 tokenizers](./llm_training/aux/tokenizers/). This data is provided in the `llm_data` directory.
+
+- **FNO Benchmark**: Data from numerical solvers for RBC and PIC is cloned from [huggingface repository](https://huggingface.co/datasets/chelseajohn/FNOBenchmark) during setup phase of benchmark using [setup_fno_env.sh](./operator_benchmark/setup_fno_env.sh) and kept at `operator_benchmark/fno_data`.
 
 # Execution
 
@@ -113,6 +120,19 @@ cd CARAML
    ```bash
    jube result llm_training/llm_benchmark_{nvidia_amd,ipu}_run -i last
    ```
+
+## FNO Benchmark
+
+To run all problems (`PIC1D`, `PIC2D`, `RBC2D`, `RBC3D`) use `all` tag otherwise use the respective problem tag. 
+
+- Distributed Training: Add the `ddp` tag to enable distributed data parallel (DDP) training.
+- Torch.compile: To run `torch.compile` with different modes of execution for inference use `eval` tag.
+
+Example to run training in mixed precision with different `torch.compile` modes on `H100`:
+
+`jube run operator_benchmark/fno_benchmark.yaml --tag H100 all`
+
+`H100` can be replaced with any tag mentioned in [tested accelerators](#tested-accelerators) section.
 
 # Results
 

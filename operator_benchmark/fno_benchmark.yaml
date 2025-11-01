@@ -49,6 +49,7 @@ comment: fno benchmark jube script for NVIDIA-A100,H100,GH200
   # Problem: PIC1D, PIC2D, RBC2D, RBC3D, all
   # Task: container (default: benchmark)
   # Parallel: ddp (default: single)
+  # Execution: eval (default: train)
 
 parameterset:
   - name: systemInfo
@@ -81,7 +82,36 @@ parameterset:
           'PIC2D': '${code_repo}/config/electrostatic_plasma2d_pic.yaml',
           'RBC2D': '${code_repo}/config/rbc2d_dedalus.yaml',
           'RBC3D': '${code_repo}/config/rbc3d_pysdc.yaml'}['$problem']
-      - {name: use_amp, type: int, separator: ";", _: 0;1}
+      - {name: use_amp, type: int, tag: "!eval", separator: ";", _: "0;1"}
+      - name: input_shape
+        mode: python
+        tag: "eval"
+        update_mode: step
+        _: >
+          {'PIC1D': '[20,2,100000]',
+          'PIC2D': '[8,3,100000]',
+          'RBC2D': '[20,4,256,64]',
+          'RBC3D': '[20,5,64,64,32]'}['$problem'].strip('[]').replace(',', ' ')
+      - {name: compile_train, type: int, separator: ";", tag: "!eval", _: "0;1"}
+      - {name: compile_eval, type: int, separator: ";", tag: "eval", _: "0;1"}
+      - name: compile_modes
+        type: str
+        separator: ";"
+        tag: "!eval"
+        mode: python
+        update_mode: step
+        _:  >
+          {'1' : 'default;reduce-overhead;max-autotune;max-autotune-no-cudagraphs',
+           '0' : 'eager'}['$compile_train']
+      - name: compile_modes
+        type: str
+        separator: ";"
+        tag: "eval"
+        mode: python
+        update_mode: step
+        _:  >
+          {'1' : 'default;reduce-overhead;max-autotune;max-autotune-no-cudagraphs',
+          '0' : 'eager'}['$compile_eval']
 
   - name: systemParameter
     init_with: platform.xml
@@ -175,8 +205,18 @@ parameterset:
               $code_repo/scripts/train.py \
               --config=${config} \
               --benchmark \
-              --use_amp=${use_amp} 
+              --use_amp=${use_amp} \
+              --compile_train=${compile_train} \
+              --compile_mode=${compile_modes}
               "
+          export EVAL_CMD="\
+                $code_repo/scripts/benchmark/fno_compile.py \
+                --config=${config} \
+                --use_amp=0 \
+                --compile_eval=${compile_eval} \
+                --compile_train=0 \
+                --input_shape ${input_shape}
+                "
       - name: postprocess
         mode: text
         tag: "!container"
@@ -198,17 +238,24 @@ parameterset:
       - name: executable
         mode: python
         separator: ";"
-        tag: "ddp"
+        tag: "ddp+!eval"
         update_mode: step
         _:
           "{'benchmark': \" \\\"$$LAUNCHER_DDP $$CMD\\\" \"}['$jube_step_name']"
       - name: executable
         mode: python
         separator: ";"
-        tag: "!ddp"
+        tag: "!ddp+!eval"
         update_mode: step
         _:
           "{'benchmark': \" \\\"$$LAUNCHER $$CMD\\\" \"}['$jube_step_name']"
+      - name: executable
+        mode: python
+        separator: ";"
+        tag: "eval"
+        update_mode: step
+        _:
+          "{'benchmark': \" \\\"$$LAUNCHER $$EVAL_CMD\\\" \"}['$jube_step_name']"
       - name: executable
         mode: python
         separator: "!"
@@ -255,6 +302,10 @@ patternset:
       - {name: monitortime,     type: float, _: "TotalMonitorTime \\(s\\): *$jube_pat_fp"}
       - {name: checkpointtime,  type: float, _: "TotalCheckpointTime \\(s\\): *$jube_pat_fp"}
       - {name: computetime,     type: float, _: "TotalComputeTime \\(s\\): *$jube_pat_fp"}
+      - {name: traintime,       type: float, _: "TotalTrainTime \\(s\\): *$jube_pat_fp"}
+      - {name: compiletime,     type: float, _: "MeanCompileTime \\(s\\): *$jube_pat_fp"}
+      - {name: trainsamples,    type: int,   _: "TotalTrainTimesteps: *$jube_pat_int"}
+      - {name: trainsamples_per_sec, type: int, _: "TrainTimesteps/s: *$jube_pat_fp"}
       - {name: samples,         type: int,   _: "TotalTimesteps: *$jube_pat_int"}
       - {name: samples_per_sec, type: int, _: "Timesteps/s: *$jube_pat_fp"}
       - {name: grid,            type: str, _: '-- grid shape\s*:\s*(\([^)]+\))'}
@@ -298,21 +349,27 @@ result:
           - {title: "Config", _: config}
           - {title: "ModelParam (Million)", format: ".2f",_: million_param}
           - {title: "ModelSize (MB)", format: ".2f", _: model_mem}
-          - {title: "Grid", _: grid}
-          - {title: "Particles", _: particle}
-          - {title: "GlobalBatchSize", _: globalbs}
+          - {title: "Grid", tag: "!eval", _: grid}
+          - {title: "Particles", tag: "!eval", _: particle}
+          - {title: "GlobalBatchSize", tag: "!eval", _: globalbs}
+          - {title: "InputShape", tag: "eval", _: input_shape}
           - {title: "Runtime (min)", _: runtime}
-          - {title: "Epochs", _: epochs}
-          - {title: "MixedPrecision", _: mxp}
-          - {title: "EpochTime (s)", format: ".3f", _: epochtime}
-          - {title: "ComputeTime (s)", format: ".3f", _: computetime}
-          - {title: "MonitorTime (s)", format: ".3f",_: monitortime}
-          - {title: "CheckpointTime (s)", format: ".3f", _: checkpointtime}
-          - {title: "Timesteps",  _: samples}
-          - {title: "Timesteps/second", _: samples_per_sec}
-          - {title: "PeakFwdMem (MB)", format: ".2f", _: fwd_mem_avg}
-          - {title: "PersistentMem (MB)",format: ".2f", _: bwd_mem_avg}
-          - {title: "ActivationMem (MB)",format: ".2f", _: act_mem_avg}
+          - {title: "Epochs", tag: "!eval", _: epochs}
+          - {title: "MixedPrecision", tag: "!eval", _: mxp}
+          - {title: "CompileMode",  _: compile_modes}
+          - {title: "MeanCompileTime (s)",  format: ".3f", _: compiletime}
+          - {title: "EpochTime (s)", tag: "!eval", format: ".3f", _: epochtime}
+          - {title: "TrainTime (s)",  tag: "!eval",format: ".3f", _: traintime}
+          - {title: "ComputeTime (s)", tag: "!eval", format: ".3f", _: computetime}
+          - {title: "MonitorTime (s)",  tag: "!eval",format: ".3f",_: monitortime}
+          - {title: "CheckpointTime (s)",  tag: "!eval",format: ".3f", _: checkpointtime}
+          - {title: "Timesteps",  tag: "!eval", _: samples}
+          - {title: "Timesteps/second",  tag: "!eval",_: samples_per_sec}
+          - {title: "TrainTimesteps",  tag: "!eval", _: trainsamples}
+          - {title: "TrainTimesteps/second", tag: "!eval", _: trainsamples_per_sec}
+          - {title: "PeakFwdMem (MB)", tag: "!eval", format: ".2f", _: fwd_mem_avg}
+          - {title: "PersistentMem (MB)", tag: "!eval",format: ".2f", _: bwd_mem_avg}
+          - {title: "ActivationMem (MB)", tag: "!eval",format: ".2f", _: act_mem_avg}
 
       - name: result_table
         style: pretty
@@ -328,21 +385,27 @@ result:
           - {title: "Config", _: config}
           - {title: "ModelParam (Million)", format: ".2f",_: million_param}
           - {title: "ModelSize (MB)", format: ".2f", _: model_mem}
-          - {title: "Grid", _: grid}
-          - {title: "Particles", _: particle}
-          - {title: "GlobalBatchSize", _: globalbs}
+          - {title: "Grid", tag: "!eval", _: grid}
+          - {title: "Particles", tag: "!eval", _: particle}
+          - {title: "GlobalBatchSize", tag: "!eval", _: globalbs}
+          - {title: "InputShape", tag: "eval", _: input_shape}
           - {title: "Runtime (min)", _: runtime}
-          - {title: "Epochs", _: epochs}
-          - {title: "MixedPrecision", _: mxp}
-          - {title: "EpochTime (s)", format: ".3f", _: epochtime}
-          - {title: "ComputeTime (s)", format: ".3f", _: computetime}
-          - {title: "MonitorTime (s)", format: ".3f",_: monitortime}
-          - {title: "CheckpointTime (s)", format: ".3f", _: checkpointtime}
-          - {title: "Timesteps",  _: samples}
-          - {title: "Timesteps/second", _: samples_per_sec}
-          - {title: "PeakFwdMem (MB)", format: ".2f", _: fwd_mem_avg}
-          - {title: "PersistentMem (MB)",format: ".2f", _: bwd_mem_avg}
-          - {title: "ActivationMem (MB)",format: ".2f", _: act_mem_avg}
+          - {title: "Epochs", tag: "!eval", _: epochs}
+          - {title: "MixedPrecision", tag: "!eval",_: mxp}
+          - {title: "CompileMode",  _: compile_modes}
+          - {title: "MeanCompileTime (s)",  format: ".3f", _: compiletime}
+          - {title: "EpochTime (s)", tag: "!eval", format: ".3f", _: epochtime}
+          - {title: "TrainTime (s)",  tag: "!eval",format: ".3f", _: traintime}
+          - {title: "ComputeTime (s)", tag: "!eval", format: ".3f", _: computetime}
+          - {title: "MonitorTime (s)",  tag: "!eval",format: ".3f",_: monitortime}
+          - {title: "CheckpointTime (s)",  tag: "!eval",format: ".3f", _: checkpointtime}
+          - {title: "Timesteps",  tag: "!eval", _: samples}
+          - {title: "Timesteps/second",  tag: "!eval",_: samples_per_sec}
+          - {title: "TrainTimesteps",  tag: "!eval", _: trainsamples}
+          - {title: "TrainTimesteps/second", tag: "!eval", _: trainsamples_per_sec}
+          - {title: "PeakFwdMem (MB)", tag: "!eval", format: ".2f", _: fwd_mem_avg}
+          - {title: "PersistentMem (MB)", tag: "!eval",format: ".2f", _: bwd_mem_avg}
+          - {title: "ActivationMem (MB)", tag: "!eval",format: ".2f", _: act_mem_avg}
 
 step:
   - name: setup_env

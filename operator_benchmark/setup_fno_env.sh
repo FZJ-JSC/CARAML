@@ -98,11 +98,18 @@ fi
 # clone operator_learning code
 cd $BENCH_DIR
 if ! [ -d "operator_learning" ]; then
-    git clone -b profiling https://github.com/chelseajohn/operator_learning.git operator_learning
+    git clone https://github.com/chelseajohn/operator_learning.git operator_learning
     cd operator_learning
     apptainer exec $CONTAINER \
         python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
     cd ..
+else
+    echo "operator_learning directory exists at $BENCH_DIR/ !" >&2
+fi
+
+# clone fno data from hugging face
+if ! [ -d "fno_data" ]; then
+    git clone https://huggingface.co/datasets/chelseajohn/FNOBenchmark fno_data
 else
     echo "operator_learning directory exists at $BENCH_DIR/ !" >&2
 fi
@@ -123,7 +130,7 @@ echo "Done building additional packages for $ACCELERATOR in $PYTORCH_PACKAGES_NV
 # Creating wrapper for external torch packages
 if ! [ -f $NVIDIA_WRAP ]; then
     echo "creating NVIDIA Container wrapper"
-    printf "%s\n"  "export PYTHONPATH=$PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages:$BENCH_DIR/operator_learning:\$PYTHONPATH" "\$*" > $NVIDIA_WRAP
+    printf "%s\n"  "export PYTHONPATH=$PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages:$BENCH_DIR/operator_learning:\$PYTHONPATH" "export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real/libcuda.so.1" "\$*" > $NVIDIA_WRAP
     chmod u+rwx $NVIDIA_WRAP
 fi
 touch $DONE_FILE
