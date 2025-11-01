@@ -43,9 +43,15 @@ The [LLM-training](./llm_training/) benchmark is implemented in PyTorch with:
 Performance is measured in `tokens/s` and energy is recorded in `Wh`.
 
 ### 3. Neural Operator: Fourier Neural Operator (FNO)
-The [operator-benchmark](./operator_benchmark/) is implemented in PyTorch with [operator_learning](https://github.com/chelseajohn/operator_learning) for NVIDIA systems. It enables comprehensive analysis of mixed-precision training and the performance impact of `torch.compile` during both training and inference of Fourier Neural Operator (FNO) models. The benchmark includes experiments on two representative problems: Rayleigh–Bénard convection (RBC) in 2D and 3D and plasma simulation using Particle-in-Cell (PIC) methods in 1D and 2D.
+The [operator-benchmark](./operator_benchmark/) is implemented in PyTorch with [operator_learning](https://github.com/chelseajohn/operator_learning) for NVIDIA systems. 
 
-Performance in measured in `timesteps/s`.
+It enables comprehensive analysis of mixed-precision training and the performance impact of `torch.compile` during both training and inference of FNO models.
+
+The benchmark includes experiments on two representative problems: 
+- Rayleigh–Bénard convection (RBC) in 2D and 3D 
+- Plasma simulation using Particle-in-Cell (PIC) methods in 1D and 2D.
+
+Performance is measured in `timesteps/s`.
 
 # Requirements
 
@@ -77,7 +83,7 @@ cd CARAML
    - `GH200` (for Arm CPU + H100)
    - `MI250` or `MI300X` or `MI300A` (for AMD)
    - `GC200` (for Graphcore)
-> **Note**: The `container` tag should ideally be used only once at the beginning to pull and set up the container.
+> **Note**: The `container` tag should ideally be used only once at the beginning to pull and set up the container and environment.
 
 ## Image Classification (Training)
 
