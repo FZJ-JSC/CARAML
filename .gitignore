@@ -29,7 +29,7 @@ image_classification/*installed
 # =========================================
 # Operator Benchmark
 # =========================================
-operator_benchmark/**/fno_benchmark_*_run
+operator_benchmark/**/fno_benchmark_*_run*
 operator_benchmark/**/*installed
 operator_benchmark/**/*done
 operator_benchmark/**/*_packages*
