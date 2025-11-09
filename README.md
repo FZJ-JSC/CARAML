@@ -144,6 +144,7 @@ Example to run training in mixed precision with different `torch.compile` modes 
 
 ![Image Classsification: ResNet50](./assets/resnet_torch_all_9.png)
 ![LLM Training Benchmark](./assets/llm_800M_all_8.png)
+![FNO Training Benchmark](./assets/fno_benchmark.png)
  
 # JSC Specific Fixes
 In order to use PyTorch `torch run` API on JSC systems [fixed_torch_run.py](./llm_training/aux/fixed_torch_run.py) fix is required. The fix solves the issue defined [here](https://github.com/pytorch/pytorch/pull/81691).
