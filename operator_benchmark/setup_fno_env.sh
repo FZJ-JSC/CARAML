@@ -1,7 +1,7 @@
 set -e pipefail
 
 if [ "x$BENCH_DIR" = "x" ]; then
-    echo "BENCH_DIR is not set. Please set it to the `operator_learning` directory of benchmark" >&2
+    echo "BENCH_DIR is not set. Please set it to the `operator_benchmark` directory" >&2
     exit 1
 fi
 
