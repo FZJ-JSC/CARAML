@@ -251,7 +251,7 @@ parameterset:
            echo "export ACCELERATOR=${system_name}"
            echo "export CUDA_VISIBLE_DEVICES=0,1,2,3"
            echo "export TORCH_NCCL_ASYNC_ERROR_HANDLING=1"
-           exho "export OMP_NUM_THREADS=1"
+           echo "export OMP_NUM_THREADS=1"
            echo "${ibcomm}"
 
       - name: executable
