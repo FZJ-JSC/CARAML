@@ -8,12 +8,13 @@ Paper: [Arxiv](https://arxiv.org/abs/2409.12994), [IEEE](https://ieeexplore.ieee
 
 # Tested Accelerators
 
-CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JEDI](https://apps.fz-juelich.de/jsc/hps/jedi/index.html#), [WEST-AI Nodes](https://westai.de/services/hardware/) and [NHR-FAU](https://doc.nhr.fau.de/clusters/testcluster/). These include the accelerators: 
+CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JEDI](https://apps.fz-juelich.de/jsc/hps/jedi/index.html#), [WEST-AI Nodes](https://westai.de/services/hardware/), [NHR-FAU](https://doc.nhr.fau.de/clusters/testcluster/) and [Mila](https://docs.mila.quebec/Information.html#node-profile-description). These include the accelerators: 
 
 ```markdown
 | System                                            | Configuration                                     | Tag       |
 |---------------------------------------------------|---------------------------------------------------|-----------|
 | NVIDIA Ampere node (SXM)                          | 4 × A100 (40GB HBM2e) GPUs                        | `A100`    |
+| NVIDIA Ampere node (SXM)                          | 4 × A100 (80GB HBM2e) GPUs                        | `MILA`    |
 | NVIDIA Hopper node (PCIe)                         | 4 × H100 (80GB HBM2e) GPUs                        | `H100`    |
 | NVIDIA Hopper node (NVLink)                       | 4 × H100 (94GB HBM2e) GPUs                        | `WAIH100` |
 | NVIDIA Grace-Hopper chip                          | 1 × GH200 (480GB LPDDR5X, 96GB HBM3) GPU          | `GH200`   |
@@ -23,6 +24,7 @@ CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-ju
 | AMD MI200 node                                    | 4 × MI250 (128GB HBM2e) GPUs                      | `MI250`   |
 | Graphcore IPU-POD4 M2000                          | 4 × GC200 (512GB DDR4-3200) IPUs                  | `GC200`   |
 ```
+> **Note**: `MILA` tag is supported only for FNO benchmark.
 
 # Benchmark
 
@@ -80,12 +82,13 @@ cd CARAML
     jube run  {JUBEConfig}.{xml,yaml} --tag container H100
     ```
    Replace `H100` with one of the following as needed:
+   - `MILA` (for A100 80GB, only for FNO benchmark)
    - `GH200` (for Arm CPU + H100)
    - `MI250` or `MI300X` or `MI300A` (for AMD)
    - `GC200` (for Graphcore)
 > **Note**: The `container` tag should ideally be used only once at the beginning to pull and set up the container and environment.
 
-## Image Classification (Training)
+## Image Classification Training Benchmark
 
 - To run the benchmark with defined configurations do
     ```bash
@@ -104,7 +107,7 @@ cd CARAML
   jube result image_classification/image_classification_torch_benchmark_run -i last
    ```
 
-## LLM Training
+## LLM Pre-Training Benchmark
 
 - To run the benchmark with defined configurations for `800M` GPT model with OSCAR data do:
     ```bash
@@ -127,12 +130,12 @@ cd CARAML
    jube result llm_training/llm_benchmark_{nvidia_amd,ipu}_run -i last
    ```
 
-## FNO Benchmark
+## FNO Training & Inference Benchmark
 
 To run all problems (`PIC1D`, `PIC2D`, `RBC2D`, `RBC3D`) use `all` tag otherwise use the respective problem tag. 
 
 - Distributed Training: Add the `ddp` tag to enable distributed data parallel (DDP) training.
-- Torch.compile: To run `torch.compile` with different modes of execution for inference use `eval` tag.
+- Torch.compile: To run `torch.compile` with different modes of execution for training and inference. Use `eval` tag for inference.
 
 Example to run training in mixed precision with different `torch.compile` modes on `H100`:
 

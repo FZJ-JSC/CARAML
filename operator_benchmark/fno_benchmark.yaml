@@ -44,8 +44,16 @@ comment: fno benchmark jube script for NVIDIA-A100,H100,GH200
   #   GPU: 4× NVIDIA A100 GPU, 4× 40 GB HBM2e
   #   Network: 2× InfiniBand HDR (NVIDIA Mellanox Connect-X6)
   #   Available: 192 nodes
+
+  # MILA-A100 NVIDIA:
+  #   1x NVIDIA A100 Ampere-SXM
+  #   CPU: 2x AMD64, 2x 32 cores or 2x AMD64, 2x 64 cores
+  #   Memory: 1024 GB or 2048 GB
+  #   GPU: 4x/8x NVIDIA A100 GPU, 4x/8x  80 GB HBM2e 
+
+
 # Tags
-  # System: JUPITER, GH200, WAIH100, H100, A100
+  # System: JUPITER, GH200, WAIH100, H100, A100, MILA
   # Problem: PIC1D, PIC2D, RBC2D, RBC3D, all
   # Task: container (default: benchmark)
   # Parallel: ddp (default: single)
@@ -59,6 +67,7 @@ parameterset:
       - {name: system_name, type: str, tag: "WAIH100", _: "WAIH100"}
       - {name: system_name, type: str, tag: "H100",    _: "H100"}
       - {name: system_name, type: str, tag: "A100",    _: "A100"}
+      - {name: system_name, type: str, tag: "MILA",    _: "MILA"}
       - {name: system_version,         mode: shell,    _: "echo 2025.02"}
   
   - name: problemInfo
@@ -108,7 +117,7 @@ parameterset:
           'PIC2D': '[8,3,100000]',
           'RBC2D': '[20,4,256,64]',
           'RBC3D': '[20,5,64,64,32]'}['$problem'].strip('[]').replace(',', ' ')
-      - {name: compile_train, type: int, separator: ";", tag: "!eval", _: "1"}
+      - {name: compile_train, type: int, separator: ";", tag: "!eval", _: "0;1"}
       - {name: compile_eval, type: int, separator: ";", tag: "eval", _: "0;1"}
       - name: compile_modes
         type: str
@@ -117,9 +126,8 @@ parameterset:
         mode: python
         update_mode: step
         _:  >
-          {'1' : 'default', 
+          {'1' : 'default;reduce-overhead;max-autotune;max-autotune-no-cudagraphs', 
            '0' : 'eager'}['$compile_train'] 
-        #;reduce-overhead;max-autotune;max-autotune-no-cudagraphs
       - name: compile_modes
         type: str
         separator: ";"
@@ -133,20 +141,21 @@ parameterset:
   - name: systemParameter
     init_with: platform.xml
     parameter:
-      - {name: account,         tag: "!WAIH100",          _: "zam"}
+      - {name: account,         tag: "!WAIH100+!MILA",    _: "zam"}
       - {name: account,         tag: "WAIH100",           _: "westai0049"}
+      - {name: account,         tag: "MILA",              _: "mila"}
       - {name: queue,           mode: python,
-         _: "{'JUPITER': 'jureap', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'dc-gpu'}['${system_name}']"}
+         _: "{'JUPITER': 'jureap', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'dc-gpu', 'MILA': 'long'}['${system_name}']"}
       - {name: nodes,            type: int, tag: "container",   _: 1}
       - {name: nodes,            type: int, tag: "!container", separator: ";",   _: 1}
       - {name: gpus_per_node,    type: int, tag: "container|!ddp", _: 1}
       - {name: gpus_per_node,    type: int, tag: "ddp", _: 4}
-      - {name: gres, _: "gpu:${gpus_per_node}"}
+      - {name: gres, tag: "MILA", _: "gpu:${gpus_per_node}"}
       - {name: total_devices, mode: python, type: int, _: "${gpus_per_node}*${nodes}"}
       - {name: taskspernode,     type: int,                _: 1}
       - {name: tasks,            type: int, mode: python, update_mode: step, _: "${taskspernode}*${nodes}"}
       - {name: threadspertask,  type: int, mode: python, tag: "!container" ,
-        _: "{'JUPITER': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128'}['${system_name}']"}
+        _: "{'JUPITER': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128', 'MILA': '4'}['${system_name}']"}
       - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
       - {name: timelimit,        tag: "container",         _: "02:00:00"}
       - {name: timelimit,        tag: "!container",         _: "00:45:00"} 
@@ -155,9 +164,15 @@ parameterset:
       - {name: ready_file,                _: "ready"}
       - {name: error_file,                _: "error"}
       - {name: root_dir,            type: str,               _: "${jube_benchmark_home}/.."}
+      - name: additional_job_config
+        tag: "MILA"
+        mode: text
+        separator: ";"
+        _: |
+           #SBATCH --constraint=ampere,80gb
       - {name: singularity_file, type: str, tag: "JUPITER|GH200",
          _: "${root_dir}/containers/ngc2508_pytorch28_cuda13_nccl2277_py312_arm.sif"}
-      - {name: singularity_file, type: str, tag: "WAIH100|H100|A100", 
+      - {name: singularity_file, type: str, tag: "WAIH100|H100|A100|MILA", 
          _: "${root_dir}/containers/ngc2508_pytorch28_cuda13_nccl2277_py312.sif"}
 
       - name: ibcomm
@@ -202,6 +217,10 @@ parameterset:
           if [ "x$$BENCH_DIR" = "x" ]; then
               echo "BENCH_DIR is not set. Please set it to the operator_learning directory of benchmark" >&2
               exit 1
+          fi
+          echo "Using ACCELERATOR=$ACCELERATOR"
+          if [ "$ACCELERATOR" = "MILA" ]; then
+            module load singularity/3.7.1
           fi
 
           export MASTER_ADDR="$$(scontrol show hostnames "$$SLURM_JOB_NODELIST" | head -n 1)"
@@ -309,6 +328,12 @@ parameterset:
         separator: |
         _: |
           --cpu_bind=v --mpi=pspmix env PMIX_SECURITY_MODE=native apptainer exec --bind=${code_repo},${root_dir} --nv ${singularity_file} ${BENCH_DIR}/nvidia_arm_fno_wrap.sh
+      - name: args_starter
+        mode: text
+        tag: "MILA+!container"
+        separator: |
+        _: |
+          --cpu_bind=v singularity exec --bind=${SCRATCH},${code_repo} --nv ${singularity_file} ${BENCH_DIR}/nvidia_x86_fno_wrap.sh
 
 patternset:
   - name: perf_patterns
@@ -431,7 +456,7 @@ result:
 
 step:
   - name: setup_env
-    tag: container+(H100|GH200)
+    tag: "container+(H100|GH200|MILA)"
     iterations: 1
     use:
       - systemInfo
@@ -447,7 +472,7 @@ step:
       _:          $submit $submit_script     
   
   - name: benchmark
-    tag: "(A100|H100|WAIH100|GH200|JUPITER)+!container"
+    tag: "(A100|H100|WAIH100|GH200|JUPITER|MILA)+!container"
     iterations: 1
     use:
       - systemInfo

@@ -9,7 +9,7 @@ export ROOT_DIR=$BENCH_DIR/..
 export CUDA_VISIBLE_DEVICES=0
 
 echo "Using ACCELERATOR=$ACCELERATOR"
-NVIDIA_X86_ACCELERATORS=(A100 H100 WAIH100)
+NVIDIA_X86_ACCELERATORS=(A100 H100 WAIH100 MILA)
 NVIDIA_ARM_ACCELERATORS=(JUPITER GH200)
 
 PYTORCH_CONTAINER_FILE_NVIDIA_X86=$ROOT_DIR/containers/ngc2508_pytorch28_cuda13_nccl2277_py312.sif
@@ -54,7 +54,12 @@ else
         echo "$PYTORCH_CONTAINER_FILE_NVIDIA_X86" exists >&2
     else
         # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-25-08.html
-        apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:25.08-py3 >&2
+        if [ "$ACCELERATOR" = "MILA" ]; then
+            ml load singularity/3.7.1
+            singularity pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:25.08-py3 >&2
+        else
+            apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:25.08-py3 >&2
+        fi
         echo "Done pulling $PYTORCH_CONTAINER_FILE_NVIDIA_X86"  >&2
     fi
 fi
@@ -87,12 +92,21 @@ if [ -f $DONE_FILE ]; then
 else
     mkdir -p $PYTORCH_PACKAGES_NVIDIA
     export PIP_USER=0
-    apptainer exec $CONTAINER \
-        python -m pip install \
-        --prefix=$PYTORCH_PACKAGES_NVIDIA \
-        --no-cache-dir \
-        -r $ROOT_DIR/requirements/nvidia_fno_torch_requirements.txt \
-        >&2
+    if [ "$ACCELERATOR" = "MILA" ]; then
+        singularity exec --nv -B $SCRATCH $CONTAINER \
+            python -m pip install \
+            --prefix=$PYTORCH_PACKAGES_NVIDIA \
+            --no-cache-dir \
+            -r $ROOT_DIR/requirements/nvidia_fno_torch_requirements.txt \
+            >&2
+    else
+        apptainer exec $CONTAINER \
+            python -m pip install \
+            --prefix=$PYTORCH_PACKAGES_NVIDIA \
+            --no-cache-dir \
+            -r $ROOT_DIR/requirements/nvidia_fno_torch_requirements.txt \
+            >&2
+    fi
 fi
 
 # clone operator_learning code
@@ -100,8 +114,13 @@ cd $BENCH_DIR
 if ! [ -d "operator_learning" ]; then
     git clone https://github.com/chelseajohn/operator_learning.git operator_learning
     cd operator_learning
-    apptainer exec $CONTAINER \
-        python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
+    if [ "$ACCELERATOR" = "MILA" ]; then
+        singularity exec --nv -B $SCRATCH $CONTAINER \
+            python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
+    else
+        apptainer exec $CONTAINER \
+            python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
+    fi
     cd ..
 else
     echo "operator_learning directory exists at $BENCH_DIR/ !" >&2
@@ -119,8 +138,13 @@ cd $PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages/
 if ! [ -d "pySDC" ]; then
     git clone https://github.com/Parallel-in-Time/pySDC.git pySDC
     cd pySDC
-    apptainer exec $CONTAINER \
-        python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
+    if [ "$ACCELERATOR" = "MILA" ]; then
+        singularity exec --nv -B $SCRATCH $CONTAINER \
+            python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
+    else
+        apptainer exec $CONTAINER \
+            python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
+    fi
 else
     echo "operator_learning directory exists at $BENCH_DIR/ !" >&2
 fi
