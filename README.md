@@ -88,7 +88,7 @@ cd CARAML
    - `GC200` (for Graphcore)
 > **Note**: The `container` tag should ideally be used only once at the beginning to pull and set up the container and environment.
 
-## Image Classification (Training)
+## Image Classification Training Benchmark
 
 - To run the benchmark with defined configurations do
     ```bash
@@ -107,7 +107,7 @@ cd CARAML
   jube result image_classification/image_classification_torch_benchmark_run -i last
    ```
 
-## LLM Training
+## LLM Pre-Training Benchmark
 
 - To run the benchmark with defined configurations for `800M` GPT model with OSCAR data do:
     ```bash
@@ -130,7 +130,7 @@ cd CARAML
    jube result llm_training/llm_benchmark_{nvidia_amd,ipu}_run -i last
    ```
 
-## FNO Benchmark
+## FNO Training & Inference Benchmark
 
 To run all problems (`PIC1D`, `PIC2D`, `RBC2D`, `RBC3D`) use `all` tag otherwise use the respective problem tag. 
 
