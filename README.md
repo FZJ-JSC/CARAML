@@ -24,7 +24,7 @@ CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-ju
 | AMD MI200 node                                    | 4 × MI250 (128GB HBM2e) GPUs                      | `MI250`   |
 | Graphcore IPU-POD4 M2000                          | 4 × GC200 (512GB DDR4-3200) IPUs                  | `GC200`   |
 ```
-> **Note**: `MILA` tag is supported only for FNO Benchmark.
+> **Note**: `MILA` tag is supported only for FNO benchmark.
 
 # Benchmark
 
@@ -82,6 +82,7 @@ cd CARAML
     jube run  {JUBEConfig}.{xml,yaml} --tag container H100
     ```
    Replace `H100` with one of the following as needed:
+   - `MILA` (for A100 80GB, only for FNO benchmark)
    - `GH200` (for Arm CPU + H100)
    - `MI250` or `MI300X` or `MI300A` (for AMD)
    - `GC200` (for Graphcore)
@@ -134,7 +135,7 @@ cd CARAML
 To run all problems (`PIC1D`, `PIC2D`, `RBC2D`, `RBC3D`) use `all` tag otherwise use the respective problem tag. 
 
 - Distributed Training: Add the `ddp` tag to enable distributed data parallel (DDP) training.
-- Torch.compile: To run `torch.compile` with different modes of execution for inference use `eval` tag.
+- Torch.compile: To run `torch.compile` with different modes of execution for training and inference. Use `eval` tag for inference.
 
 Example to run training in mixed precision with different `torch.compile` modes on `H100`:
 

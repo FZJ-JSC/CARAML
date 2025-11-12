@@ -126,9 +126,8 @@ parameterset:
         mode: python
         update_mode: step
         _:  >
-          {'1' : 'default', 
+          {'1' : 'default;reduce-overhead;max-autotune;max-autotune-no-cudagraphs', 
            '0' : 'eager'}['$compile_train'] 
-        #;reduce-overhead;max-autotune;max-autotune-no-cudagraphs
       - name: compile_modes
         type: str
         separator: ";"
