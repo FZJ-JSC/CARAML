@@ -11,7 +11,7 @@ NVIDIA_X86_ACCELERATORS=(A100 H100 WAIH100)
 NVIDIA_ARM_ACCELERATORS=(JUPITER GH200)
 
 DONE_FILE=$BENCH_DIR/llm_nvidia_build_done
-PATCH_APPLIED=$BENCH_DIR/megatron_lm_patch_applied
+# PATCH_APPLIED=$BENCH_DIR/megatron_lm_patch_applied
 
 if [ -f $DONE_FILE ]; then
     echo "$DONE_FILE exists" >&2
@@ -30,11 +30,11 @@ echo "ACCELERATOR=$ACCELERATOR"
 
 if ! [ -f "$BENCH_DIR"/../nvidia_x86_torch_wrap.sh ] && [[ " ${NVIDIA_X86_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
     echo "creating NVIDIA X86 wrapper"
-    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/../nvidia_x86_torch_packages/local/lib/python3.10/dist-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/../nvidia_x86_torch_wrap.sh
+    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/../nvidia_x86_torch_packages/local/lib/python3.*/dist-packages:\$PYTHONPATH" "export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real/libcuda.so.1" "\$*"> "$BENCH_DIR"/../nvidia_x86_torch_wrap.sh
     chmod u+rwx "$BENCH_DIR"/../nvidia_x86_torch_wrap.sh
 elif ! [ -f "$BENCH_DIR"/../nvidia_arm_torch_wrap.sh ] && [[ " ${NVIDIA_ARM_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
     echo "creating NVIDIA ARM wrapper"
-    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/../nvidia_arm_torch_packages/local/lib/python3.10/dist-packages:\$PYTHONPATH" "\$*" > "$BENCH_DIR"/../nvidia_arm_torch_wrap.sh
+    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/../nvidia_arm_torch_packages/local/lib/python3.*/dist-packages:\$PYTHONPATH" "export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real/libcuda.so.1" "\$*"> "$BENCH_DIR"/../nvidia_arm_torch_wrap.sh
     chmod u+rwx "$BENCH_DIR"/../nvidia_arm_torch_wrap.sh
 fi
 
@@ -48,14 +48,14 @@ fi
 # Where the Megatron-LM code is stored
 MEGATRON_LM_REPO="$BENCH_DIR"/Megatron-LM
 cd "$MEGATRON_LM_REPO"
-# Fixing the commit 
-git checkout f7727433293427bef04858f67b2889fe9b177d88 
+# # Fixing the commit 
+# git checkout f7727433293427bef04858f67b2889fe9b177d88 
 
-# Apply tflops logging and energy patch
-if ! [ -f "$PATCH_APPLIED" ]; then
-    git apply "$BENCH_DIR"/../aux/nvidia_megatron_energy_llm_fix.patch
-    touch $PATCH_APPLIED
-fi
+# # Apply tflops logging and energy patch
+# if ! [ -f "$PATCH_APPLIED" ]; then
+#     git apply "$BENCH_DIR"/../aux/nvidia_megatron_energy_llm_fix.patch
+#     touch $PATCH_APPLIED
+# fi
 
 # Modified PyTorch launcher for JSC systems 
 if ! [ -f "fixed_torch_run.py" ]; then

@@ -54,7 +54,7 @@ comment: fno benchmark jube script for NVIDIA-A100,H100,GH200
 
 # Tags
   # System: JUPITER, GH200, WAIH100, H100, A100, MILA
-  # Problem: PIC1D, PIC2D, RBC2D, RBC3D, all
+  # Problem: PIC1D, PIC2D, PIC3D, RBC2D, RBC3D, all
   # Task: container (default: benchmark)
   # Parallel: ddp (default: single)
   # Execution: eval (default: train)
@@ -68,16 +68,17 @@ parameterset:
       - {name: system_name, type: str, tag: "H100",    _: "H100"}
       - {name: system_name, type: str, tag: "A100",    _: "A100"}
       - {name: system_name, type: str, tag: "MILA",    _: "MILA"}
-      - {name: system_version,         mode: shell,    _: "echo 2025.02"}
+      - {name: system_version,         mode: shell,    _: "echo 2026.01"}
   
   - name: problemInfo
     tag: "!container"
     parameter:
       - {name: problem, type: str, tag: "PIC1D", _: "PIC1D"} 
       - {name: problem, type: str, tag: "PIC2D", _: "PIC2D"} 
+      - {name: problem, type: str, tag: "PIC3D", _: "PIC3D"}
       - {name: problem, type: str, tag: "RBC2D", _: "RBC2D"} 
       - {name: problem, type: str, tag: "RBC3D", _: "RBC3D"} 
-      - {name: problem, type: str, tag: "all", separator: ";", _: "PIC1D;PIC2D;RBC2D;RBC3D"}
+      - {name: problem, type: str, tag: "all", separator: ";", _: "PIC1D;PIC2D;PIC3D;RBC2D;RBC3D"}
     
   - name: modelParameter
     tag: "!container"
@@ -89,6 +90,7 @@ parameterset:
         _: >
           {'PIC1D': '${jube_benchmark_home}/fno_data/PIC1D_electrostatic.h5',
           'PIC2D': '${jube_benchmark_home}/fno_data/PIC2D_electrostatic.h5',
+          'PIC3D': '${jube_benchmark_home}/fno_data/PIF3D_sl_penning_100k_QL_normalize.h5',
           'RBC2D': '${jube_benchmark_home}/fno_data/RBC2D_256x64_Ra1e7_dt1e-3_update.h5',
           'RBC3D': '${jube_benchmark_home}/fno_data/RBC3D_64x64x32_Ra1e5_dt0_5_solution.h5'}['$problem']
       - name: config
@@ -97,9 +99,10 @@ parameterset:
         _: >
           {'PIC1D': '${code_repo}/config/electrostatic_plasma1d_pic.yaml',
           'PIC2D': '${code_repo}/config/electrostatic_plasma2d_pic.yaml',
+          'PIC3D': '${code_repo}/config/electrostatic_plasma3d_pic.yaml',
           'RBC2D': '${code_repo}/config/rbc2d_dedalus.yaml',
           'RBC3D': '${code_repo}/config/rbc3d_pysdc.yaml'}['$problem']
-      - {name: use_amp, type: int, tag: "!eval", separator: ";", _: "0;1"}
+      - {name: use_amp, type: int, tag: "!eval", separator: ";", _: "0"}
       - name: use_complex_amp
         mode: python
         separator: ";"
@@ -117,7 +120,7 @@ parameterset:
           'PIC2D': '[8,3,100000]',
           'RBC2D': '[20,4,256,64]',
           'RBC3D': '[20,5,64,64,32]'}['$problem'].strip('[]').replace(',', ' ')
-      - {name: compile_train, type: int, separator: ";", tag: "!eval", _: "0;1"}
+      - {name: compile_train, type: int, separator: ";", tag: "!eval", _: "0"}
       - {name: compile_eval, type: int, separator: ";", tag: "eval", _: "0;1"}
       - name: compile_modes
         type: str
@@ -126,8 +129,9 @@ parameterset:
         mode: python
         update_mode: step
         _:  >
-          {'1' : 'default;reduce-overhead;max-autotune;max-autotune-no-cudagraphs', 
+          {'1' : 'default', 
            '0' : 'eager'}['$compile_train'] 
+        # reduce-overhead;max-autotune;max-autotune-no-cudagraphs', 
       - name: compile_modes
         type: str
         separator: ";"
@@ -171,9 +175,9 @@ parameterset:
         _: |
            #SBATCH --constraint=ampere,80gb
       - {name: singularity_file, type: str, tag: "JUPITER|GH200",
-         _: "${root_dir}/containers/ngc2508_pytorch28_cuda13_nccl2277_py312_arm.sif"}
+         _: "${root_dir}/containers/ngc2602_pytorch211_cuda13_nccl2289_py312_arm.sif"}
       - {name: singularity_file, type: str, tag: "WAIH100|H100|A100|MILA", 
-         _: "${root_dir}/containers/ngc2508_pytorch28_cuda13_nccl2277_py312.sif"}
+         _: "${root_dir}/containers/ngc2602_pytorch211_cuda13_nccl2289_py312.sif"}
 
       - name: ibcomm
         tag: "!GH200"
@@ -363,6 +367,7 @@ patternset:
       - {name: act_mem,         type: float,  _: "Estimate Activations Memory: *$jube_pat_fp"}
       - {name: mxp,             type: bool, mode: python,  _: "bool(${use_amp})"}
       - {name: complex_mxp,     type: bool, mode: python,  _: "bool(${use_complex_amp})"}
+      - {name: energy_gpu,      type: float, _: 'pynvml:\d\s*$jube_pat_fp'}
       - name: runtime
         type: float
         mode: python
@@ -416,6 +421,9 @@ result:
           - {title: "PeakFwdMem (MB)", tag: "!eval", format: ".2f", _: fwd_mem_avg}
           - {title: "PersistentMem (MB)", tag: "!eval",format: ".2f", _: bwd_mem_avg}
           - {title: "ActivationMem (MB)", tag: "!eval",format: ".2f", _: act_mem_avg}
+          - {title: "Energy/GPU (Wh)", format: ".2f", _: energy_gpu_avg}
+          - {title: "TotalEnergy (Wh)", format: ".2f", _: energy_gpu_sum}
+
 
       - name: result_table
         style: pretty
@@ -453,6 +461,9 @@ result:
           - {title: "PeakFwdMem (MB)", tag: "!eval", format: ".2f", _: fwd_mem_avg}
           - {title: "PersistentMem (MB)", tag: "!eval",format: ".2f", _: bwd_mem_avg}
           - {title: "ActivationMem (MB)", tag: "!eval",format: ".2f", _: act_mem_avg}
+          - {title: "Energy/GPU (Wh)", format: ".2f", _: energy_gpu_avg}
+          - {title: "TotalEnergy (Wh)", format: ".2f", _: energy_gpu_sum}
+
 
 step:
   - name: setup_env

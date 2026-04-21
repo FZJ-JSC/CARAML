@@ -1,2 +1,5 @@
 jpwr[pynvml] @ git+https://github.com/FZJ-JSC/jpwr
-python-slugify==8.0.4
+python-slugify
+transformers
+regex
+huggingface-hub

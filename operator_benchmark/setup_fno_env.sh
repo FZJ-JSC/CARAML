@@ -12,8 +12,8 @@ echo "Using ACCELERATOR=$ACCELERATOR"
 NVIDIA_X86_ACCELERATORS=(A100 H100 WAIH100 MILA)
 NVIDIA_ARM_ACCELERATORS=(JUPITER GH200)
 
-PYTORCH_CONTAINER_FILE_NVIDIA_X86=$ROOT_DIR/containers/ngc2508_pytorch28_cuda13_nccl2277_py312.sif
-PYTORCH_CONTAINER_FILE_NVIDIA_ARM=$ROOT_DIR/containers/ngc2508_pytorch28_cuda13_nccl2277_py312_arm.sif
+PYTORCH_CONTAINER_FILE_NVIDIA_X86=$ROOT_DIR/containers/ngc2602_pytorch211_cuda13_nccl2289_py312.sif
+PYTORCH_CONTAINER_FILE_NVIDIA_ARM=$ROOT_DIR/containers/ngc2602_pytorch211_cuda13_nccl2289_py312_arm.sif
 PYTORCH_CONTAINER_FILE_DONE=$BENCH_DIR/fno_container_done
 
 PYTORCH_PACKAGES_NVIDIA_x86=$BENCH_DIR/nvidia_fno_packages_x86
@@ -45,20 +45,20 @@ if [ "$ACCELERATOR" = "GH200" ]; then
     if [ -f $PYTORCH_CONTAINER_FILE_NVIDIA_ARM ]; then
         echo "$PYTORCH_CONTAINER_FILE_NVIDIA_ARM" exists >&2
     else
-        # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-25-08.html
-        apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_ARM docker://nvcr.io/nvidia/pytorch:25.08-py3 >&2
+        # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-26-02.html
+        apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_ARM docker://nvcr.io/nvidia/pytorch:26.02-py3 >&2
         echo "Done pulling $PYTORCH_CONTAINER_FILE_NVIDIA_ARM"  >&2
     fi
 else
     if [ -f $PYTORCH_CONTAINER_FILE_NVIDIA_X86 ]; then
         echo "$PYTORCH_CONTAINER_FILE_NVIDIA_X86" exists >&2
     else
-        # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-25-08.html
+        # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-26-02.html
         if [ "$ACCELERATOR" = "MILA" ]; then
             ml load singularity/3.7.1
-            singularity pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:25.08-py3 >&2
+            singularity pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:26.02-py3 >&2
         else
-            apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:25.08-py3 >&2
+            apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:26.02-py3 >&2
         fi
         echo "Done pulling $PYTORCH_CONTAINER_FILE_NVIDIA_X86"  >&2
     fi
@@ -127,6 +127,7 @@ else
 fi
 
 # clone fno data from hugging face
+# TODO: add pic3d data into hf
 if ! [ -d "fno_data" ]; then
     git clone https://huggingface.co/datasets/chelseajohn/FNOBenchmark fno_data
 else
