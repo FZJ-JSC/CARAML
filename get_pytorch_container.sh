@@ -13,8 +13,8 @@ export ROCM_VISIBLE_DEVICES=0
 NVIDIA_X86_ACCELERATORS=(A100 H100 WAIH100)
 NVIDIA_ARM_ACCELERATORS=(JUPITER GH200)
 
-PYTORCH_CONTAINER_FILE_NVIDIA_X86=$ROOT_DIR/containers/ngc2406_pytorch24_cuda125_nccl2215_py310.sif
-PYTORCH_CONTAINER_FILE_NVIDIA_ARM=$ROOT_DIR/containers/ngc2402_pytorch23_cuda123_nccl219_py310_arm.sif
+PYTORCH_CONTAINER_FILE_NVIDIA_X86=$ROOT_DIR/containers/ngc2602_pytorch211_cuda13_nccl2289_py312.sif
+PYTORCH_CONTAINER_FILE_NVIDIA_ARM=$ROOT_DIR/containers/ngc2602_pytorch211_cuda13_nccl2289_py312_arm.sif
 PYTORCH_CONTAINER_FILE_IPU=$ROOT_DIR/containers/ipu_pytorch20_poplar33_py38.sif
 PYTORCH_CONTAINER_FILE_AMD=$ROOT_DIR/containers/amd_pytorch21_rocm612_rccl2186_py39.sif
 PYTORCH_CONTAINER_FILE_DONE=$ROOT_DIR/pytorch_container_done
@@ -50,8 +50,8 @@ if [ "$ACCELERATOR" = "GH200" ]; then
     if [ -f $PYTORCH_CONTAINER_FILE_NVIDIA_ARM ]; then
         echo "$PYTORCH_CONTAINER_FILE_NVIDIA_ARM" exists >&2
     else
-        # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-02.html
-        apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_ARM docker://nvcr.io/nvidia/pytorch:24.02-py3 >&2
+        # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-26-02.html#rel-26-02
+        apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_ARM docker://nvcr.io/nvidia/pytorch:26.02-py3 >&2
         echo "Done pulling $PYTORCH_CONTAINER_FILE_NVIDIA_ARM"  >&2
     fi
 elif [ "$ACCELERATOR" = "GC200" ]; then
@@ -74,8 +74,8 @@ else
     if [ -f $PYTORCH_CONTAINER_FILE_NVIDIA_X86 ]; then
         echo "$PYTORCH_CONTAINER_FILE_NVIDIA_X86" exists >&2
     else
-        # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-06.html
-        apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:24.06-py3 >&2
+        # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-26-02.html#rel-26-02
+        apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:26.02-py3 >&2
         echo "Done pulling $PYTORCH_CONTAINER_FILE_NVIDIA_X86"  >&2
     fi
 fi
@@ -85,8 +85,8 @@ if [ -f $PYTORCH_CONTAINER_FILE_NVIDIA_X86 ] && [ -f $PYTORCH_CONTAINER_FILE_NVI
     echo "Done pulling LLM Pytorch Containers!" >&2
 fi
 
-rm -rf $APPTAINER_CACHEDIR
-rm -rf $APPTAINER_TMPDIR
+[[ -n "${APPTAINER_CACHEDIR:-}" ]] && rm -rf "$APPTAINER_CACHEDIR"
+[[ -n "${APPTAINER_TMPDIR:-}" ]] && rm -rf "$APPTAINER_TMPDIR"
 
 ##### Installing Requirements #####
 if ! [ -f $PYTORCH_PACKAGES_FILE_IPU ] && [ "$ACCELERATOR" = "GC200" ]; then

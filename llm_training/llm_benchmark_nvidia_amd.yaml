@@ -1,5 +1,5 @@
 name:    llm-nvidia-amd
-outpath: llm_benchmark_nvidia_amd_run
+outpath: llm_benchmark_nvidia_run
 comment: llm benchmark jube script for NVIDIA-A100,H100,GH200 and AMD-MI250,MI300X, MI300A
 # Megatron-LM benchmark for 
   # JUPITER-GH200 NVIDIA Node:
@@ -79,7 +79,7 @@ parameterset:
       - {name: system_name, type: str, tag: "MI250",   _: "MI250"}
       - {name: system_name, type: str, tag: "MI300X",  _: "MI300X"}
       - {name: system_name, type: str, tag: "MI300A",  _: "MI300A"}
-      - {name: system_version,         mode: shell,    _: "echo 2025.01"}
+      - {name: system_version,         mode: shell,    _: "echo 2026.01"}
 
   - name: modelParameter
     parameter:
@@ -101,12 +101,12 @@ parameterset:
       - {name: micro_batch_size,  type: int, mode: python, _: "[4,2,2][$modelidx]"}
       - {name: gas,               type: int, mode: python, _: "[1,64,64][$modelidx]"}
       # global_batch_size has to be divisible by dp_size*micro_batch_size*gas; 
-      - {name: global_batch_size, type: int, tag: "800M+!container", separator: ",", _: "16,32,64,128,256,512,1024,2048,4096"}
+      - {name: global_batch_size, type: int, tag: "800M+!container", separator: ",", _: "128"}
       #16,32,64,128,256,512,1024,2048,4096
       - {name: global_batch_size, type: int, tag: "!800M", mode: python, 
          _: "int( $dp_size * $micro_batch_size * $gas)"}
       - {name: sequence_length,  type: int,                _: 2048}
-      - {name: exit_duration,    type: int,                _: 60}
+      - {name: exit_duration,    type: int,                _: 10}
       - {name: modelargs,             tag: "800M",  mode: text,       _: --fp16}
       - {name: modelargs,             tag: "13B",  mode: text,        _: --ffn-hidden-size 20480 --fp16}
       - {name: modelargs,             tag: "175B", mode: text,        _: --bf16}
@@ -136,6 +136,8 @@ parameterset:
           --min-loss-scale 1.0
           --initial-loss-scale 4096 
           --position-embedding-type rope 
+          --rotary-percent 0.5 
+          --swiglu 
       - name: additionalargs
         mode: text
         tag: "MI250|MI300X|MI300A"
@@ -156,7 +158,10 @@ parameterset:
           --train-samples 300_000_000 
           --vocab-file $$VOCAB_FILE 
           --merge-file $$MERGE_FILE 
-          --tokenizer-type GPT2BPETokenizer 
+          --tokenizer-type HuggingFaceTokenizer 
+          --tokenizer-model $$TOKENIZER_MODEL
+          --tokenizer-hf-no-use-fast 
+          --vocab-size 50256 
           --init-method-std 0.0048
           --seed 42 
           --sequence-parallel 
@@ -169,15 +174,22 @@ parameterset:
           --exit-duration-in-mins ${exit_duration}
       - name: outputargs
         _: > 
-          --log-interval 5
+          --log-interval 1
           --save-interval 1500
           --eval-interval 2000
           --eval-iters 15
           --tensorboard-dir $$TENSORBOARD_PATH
-          --tensorboard-queue-size 5
-          --log-timers-to-tensorboard
-          --log-batch-size-to-tensorboard
-          --log-validation-ppl-to-tensorboard 
+          --num-workers 2 
+          --timing-log-level 0 
+          --timing-log-option minmax 
+          --tensorboard-log-interval 5 
+          --tensorboard-queue-size 1000 
+          --log-memory-to-tensorboard 
+          --log-interval 1 
+          --log-throughput 
+          --log-device-memory-used 
+          --log-energy 
+
 
   - name: systemParameter
     init_with: platform.xml
@@ -202,7 +214,7 @@ parameterset:
         _: "{'JUPITER': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128', 'MI250': '48', 'MI300X': '48', 'MI300A': '48'}['${system_name}']"}
       - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
       - {name: timelimit,        tag: "container",         _: "02:00:00"}
-      - {name: timelimit,        tag: "!container",         _: "01:15:00"} # set time limit +15mins than exit_duration
+      - {name: timelimit,        tag: "!container",         _: "00:20:00"} # set time limit +15mins than exit_duration
       - {name: oottime,          type: int,                _: 120}
       - {name: ootsignal,        type: int,                _: 12}
       - {name: outlogfile,                                _: "job.out"}
@@ -223,14 +235,14 @@ parameterset:
           #SBATCH --constraint="mi300a"
           #SBATCH --signal=B:${ootsignal}@${oottime}
       - {name: root_dir,            type: str,               _: "$jube_benchmark_home/.."}
-      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-02.html
-      # nvcr.io/nvidia/pytorch:24.02-py3
+      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-26-02.html#rel-26-03
+      # nvcr.io/nvidia/pytorch:26.02-py3
       - {name: singularity_file, type: str, tag: "JUPITER|GH200",
-         _: "$root_dir/containers/ngc2402_pytorch23_cuda123_nccl219_py310_arm.sif"}
-      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-24-06.html
-      # nvcr.io/nvidia/pytorch:24.06-py3
+         _: "$root_dir/containers/ngc2602_pytorch211_cuda13_nccl2289_py312_arm.sif"}
+      # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-26-02.html#rel-26-03
+      # nvcr.io/nvidia/pytorch:26.02-py3
       - {name: singularity_file, type: str, tag: "WAIH100|H100|A100", 
-          _: "$root_dir/containers/ngc2406_pytorch24_cuda125_nccl2215_py310.sif"}
+          _: "$root_dir/containers/ngc2602_pytorch211_cuda13_nccl2289_py312.sif"}
       # https://hub.docker.com/layers/rocm/pytorch/rocm6.1.2_ubuntu20.04_py3.9_pytorch_release-2.1.2/images/sha256-e3c1c3cde0886689b139daad7a62ad24af3f292855f683d7b28806ae9f1d2a7e?context=explore
       # rocm6.1.2_ubuntu20.04_py3.9_pytorch_release-2.1.2
       - {name: singularity_file, type: str, tag: "MI250|MI300X|MI300A", 
@@ -281,8 +293,9 @@ parameterset:
           fi
 
           # Input data
-          VOCAB_FILE="$BENCH_DIR"/tokenizers/gpt2-vocab.json
-          MERGE_FILE="$BENCH_DIR"/tokenizers/gpt2-merges.txt
+          VOCAB_FILE="$BENCH_DIR"/tokenizer_configs/vocab.json
+          MERGE_FILE="$BENCH_DIR"/tokenizer_configs/merges.txt
+          TOKENIZER_MODEL="$BENCH_DIR"/tokenizer_configs
 
           # Path to a singular, preprocessed dataset.
           LLM_DATA_PATH="$BENCH_DIR"/llm_data/oscar_text_document
@@ -321,7 +334,9 @@ parameterset:
           export CMD=" \
               $(pwd)/pretrain_gpt.py \
               --tensor-model-parallel-size $tp_size \
+              --tp-comm-bootstrap-backend nccl \
               --pipeline-model-parallel-size $pp_size \
+              --pipeline-model-parallel-comm-backend nccl \
               $gptargs \
               $outputargs \
               --save $CHECKPOINT_PATH \
@@ -377,7 +392,7 @@ parameterset:
         _: |
            echo "export BENCH_DIR=${jube_benchmark_home}"
            echo "export ACCELERATOR=$system_name"
-           echo "export ENERGY_PATH=${jube_benchmark_home}/${jube_wp_relpath}/${system_name}_power.csv"
+          #  echo "export ENERGY_PATH=${jube_benchmark_home}/${jube_wp_relpath}/${system_name}_power.csv"
       - {name: measurement,  _: $variable_export}
       - name: executable
         mode: python
@@ -447,25 +462,27 @@ patternset:
       - {name: jobid,      type: int, _: "Submitted batch job $jube_pat_int" }
       - {name: iter_pat,   type: int, _: "iteration\\s+$jube_pat_int/\\s*$jube_pat_nint"}
       - {name: iterations, type: int, mode: python, _: "$iter_pat_max"}
-      - {name: tflops_pat, type: float, _: "TFLOPs:\\s+$jube_pat_fp"}
+      - {name: tflops_pat, type: float, _: "throughput per GPU \\(TFLOP\\/s\\/GPU\\):\\s+$jube_pat_fp"}
       # https://github.com/NVIDIA/Megatron-LM/blob/f7727433293427bef04858f67b2889fe9b177d88/megatron/training.py#L598
       # https://github.com/bigcode-project/Megatron-LM/blob/21045b59127cd2d5509f1ca27d81fae7b485bd22/megatron/training.py#L616
-      - {name: elp_pat,    type: float, _: "elapsed time per iteration \\(s\\):\\s+$jube_pat_fp"}
-      - {name: tokens_per_second,  type: float,  mode: python, _: "(1.0/$elp_pat_avg)*$global_batch_size*$sequence_length"}
+      - {name: elp_pat,    type: float, _: "elapsed time per iteration \\(ms\\):\\s+$jube_pat_fp"}
+      - {name: tokens_per_second,  type: float,  mode: python, _: "(1000.0/$elp_pat_avg)*$global_batch_size*$sequence_length"}
       - {name: throughput_in_time, type: float, mode: python, _: "(20000000/$tokens_per_second)"}
+      - {name: energy_per_gpu, type: float, _: "energy per GPU \\(J\\/iter\\/GPU\\):\\s+$jube_pat_fp"}
+      - {name: power_per_gpu, type: float, _: "power per GPU \\(W\\/GPU\\):\\s+$jube_pat_fp"}
       #- {name: energy_list_reimann,type: str,   _: "Energy-per-GPU-list integrated\\(Wh\\): (\\[.*?\\])"}
       #- {name: energy_list_counter,type: str, tag: "MI250|MI300X|MI300A",  _: "Energy-per-GPU-list from counter\\(Wh\\): (\\[.*?\\])"}
-   - name: efile_patterns
-     pattern:
-      - {name: energy_file_path, type: str, _: "Writing combined energy DataFrame to (.*)"}
+  #  - name: efile_patterns
+  #    pattern:
+  #     - {name: energy_file_path, type: str, _: "Writing combined energy DataFrame to (.*)"}
 
 analyser:
   - name: analyse
     reduce: false
     analyse:
-      - step: combine_energy
-        file:
-          {use: efile_patterns, _: stdout}
+      # - step: combine_energy
+      #   file:
+      #     {use: efile_patterns, _: stdout}
       - step: benchmark
         file:
           {use: perf_patterns, _: job.out}
@@ -495,11 +512,14 @@ result:
         - {title: "DataParallel", _: dp_size}
         - {title: "Iterations", _: iterations}
         # - {title: "TFLOPs logged", _: tflops_pat_cnt}
-        - {title: "Time/iteration(s)", format: ".2f", _: elp_pat_avg}
+        - {title: "Time/iteration(ms)", format: ".2f", _: elp_pat_avg}
         - {title: "Tokens/second",format: ".2f", _: tokens_per_second}
         - {title: "Avg_TFLOPs/GPU", format: ".2f", _: tflops_pat_avg}
         - {title: "time_to_report_in_seconds",format: ".2f", _: throughput_in_time}
-        - {title: "EnergyFile",  _: energy_file_path}
+        - {title: "Energy/GPU (J/iter/GPU)", format: ".2f", _: energy_per_gpu_avg}
+        - {title: "Power/GPU (W/GPU)", format: ".2f", _: power_per_gpu_avg}
+
+        # - {title: "EnergyFile",  _: energy_file_path}
         # - {title: "Energy/Device(Wh)",  _: energy_list_reimann}
         # - {title: "Energy_counter/Device(Wh)", tag: "MI250|MI300X|MI300A",  _: energy_list_counter}
         
@@ -555,17 +575,17 @@ step:
           error_file: $error_file
           _:          $submit $submit_script
     
-    - name: combine_energy
-      tag: "!container"
-      iterations: 1
-      depend: benchmark
-      use:
-        - systemInfo
-        - systemParameter
-        - modelParameter
-      do:
-      # Assumes local environment has pandas package installed
-        - tag: "!(MI300X|MI300A)"
-          _: module load GCC SciPy-bundle
-        - python3 ${root_dir}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$((${total_devices}-1))))
+    # - name: combine_energy
+    #   tag: "!container"
+    #   iterations: 1
+    #   depend: benchmark
+    #   use:
+    #     - systemInfo
+    #     - systemParameter
+    #     - modelParameter
+    #   do:
+    #   # Assumes local environment has pandas package installed
+    #     - tag: "!(MI300X|MI300A)"
+    #       _: module load GCC SciPy-bundle
+    #     - python3 ${root_dir}/aux/combine_energy.py --output ${jube_benchmark_home}/${jube_wp_relpath}/combined_energy.csv $$(printf "${jube_benchmark_home}/${jube_wp_relpath}/benchmark/${system_name}_power.%d.energy.csv " $$(seq 0 $$((${total_devices}-1))))
 
