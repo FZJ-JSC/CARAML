@@ -34,7 +34,13 @@ if ! [ -f "$BENCH_DIR"/../nvidia_x86_torch_wrap.sh ] && [[ " ${NVIDIA_X86_ACCELE
     chmod u+rwx "$BENCH_DIR"/../nvidia_x86_torch_wrap.sh
 elif ! [ -f "$BENCH_DIR"/../nvidia_arm_torch_wrap.sh ] && [[ " ${NVIDIA_ARM_ACCELERATORS[@]} " == *" $ACCELERATOR "* ]]; then
     echo "creating NVIDIA ARM wrapper"
-    printf "%s\n"  "export PYTHONPATH=$BENCH_DIR/../nvidia_arm_torch_packages/local/lib/python3.*/dist-packages:\$PYTHONPATH" "export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real/libcuda.so.1" "\$*"> "$BENCH_DIR"/../nvidia_arm_torch_wrap.sh
+    printf "%s\n" \
+        "export PYTHONPATH=$BENCH_DIR/../nvidia_arm_torch_packages/local/lib/python3.*/dist-packages:\$PYTHONPATH" \
+        "export LD_LIBRARY_PATH=/.singularity.d/libs:\$LD_LIBRARY_PATH" \
+        "export LIBRARY_PATH=/.singularity.d/libs:\$LIBRARY_PATH" \
+        "export TRITON_LIBCUDA_PATH=/.singularity.d/libs" \
+        '$*' \
+        > "$BENCH_DIR/../nvidia_arm_torch_wrap.sh"
     chmod u+rwx "$BENCH_DIR"/../nvidia_arm_torch_wrap.sh
 fi
 
