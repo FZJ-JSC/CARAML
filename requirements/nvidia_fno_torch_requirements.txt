@@ -3,7 +3,6 @@ calflops
 configmypy
 coverage
 cufinufft
-cupy
 finufft
 h5py
 hf-xet
@@ -21,6 +20,7 @@ pytest-benchmark
 pyvista
 PyYAML
 pytorch-finufft
+python-slugify
 qmat
 ruamel.yaml
 safetensors

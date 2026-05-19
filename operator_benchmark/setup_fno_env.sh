@@ -97,6 +97,7 @@ else
             python -m pip install \
             --prefix=$PYTORCH_PACKAGES_NVIDIA \
             --no-cache-dir \
+            --no-deps \
             -r $ROOT_DIR/requirements/nvidia_fno_torch_requirements.txt \
             >&2
     else
@@ -104,6 +105,7 @@ else
             python -m pip install \
             --prefix=$PYTORCH_PACKAGES_NVIDIA \
             --no-cache-dir \
+            --no-deps \
             -r $ROOT_DIR/requirements/nvidia_fno_torch_requirements.txt \
             >&2
     fi
@@ -135,7 +137,7 @@ else
 fi
 
 # clone pySDC 
-cd $PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages/
+cd $PYTORCH_PACKAGES_NVIDIA/local/lib/python*/dist-packages/
 if ! [ -d "pySDC" ]; then
     git clone https://github.com/Parallel-in-Time/pySDC.git pySDC
     cd pySDC
