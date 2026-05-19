@@ -102,6 +102,10 @@ parameterset:
           'PIC3D': '${code_repo}/config/electrostatic_plasma3d_pic.yaml',
           'RBC2D': '${code_repo}/config/rbc2d_dedalus.yaml',
           'RBC3D': '${code_repo}/config/rbc3d_pysdc.yaml'}['$problem']
+      - {name: batchSize, type: int, separator: ";", _: 256}
+      - {name: val_batchSize, type: int, separator: ";", _: 1}
+      - {name: gas, type: int, separator: ";", _: 8}
+      - {name: tp_size, type: int, separator: ";", _: "16"}
       - {name: use_amp, type: int, tag: "!eval", separator: ";", _: "0"}
       - name: use_complex_amp
         mode: python
@@ -145,13 +149,14 @@ parameterset:
   - name: systemParameter
     init_with: platform.xml
     parameter:
-      - {name: account,         tag: "!WAIH100+!MILA",    _: "zam"}
+      - {name: account,         tag: "!WAIH100+!MILA+!A100",    _: "zam"}
+      - {name: account,         tag: "A100",    _: "hai_1073"}
       - {name: account,         tag: "WAIH100",           _: "westai0049"}
       - {name: account,         tag: "MILA",              _: "mila"}
       - {name: queue,           mode: python,
-         _: "{'JUPITER': 'jureap', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'dc-gpu', 'MILA': 'long'}['${system_name}']"}
+         _: "{'JUPITER': 'jureap', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'booster', 'MILA': 'long'}['${system_name}']"}
       - {name: nodes,            type: int, tag: "container",   _: 1}
-      - {name: nodes,            type: int, tag: "!container", separator: ";",   _: 1}
+      - {name: nodes,            type: int, tag: "!container", separator: ";",  _: "${tp_size}"}
       - {name: gpus_per_node,    type: int, tag: "container|!ddp", _: 1}
       - {name: gpus_per_node,    type: int, tag: "ddp", _: 4}
       - {name: gres, tag: "MILA", _: "gpu:${gpus_per_node}"}
@@ -159,7 +164,7 @@ parameterset:
       - {name: taskspernode,     type: int,                _: 1}
       - {name: tasks,            type: int, mode: python, update_mode: step, _: "${taskspernode}*${nodes}"}
       - {name: threadspertask,  type: int, mode: python, tag: "!container" ,
-        _: "{'JUPITER': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '128', 'MILA': '4'}['${system_name}']"}
+        _: "{'JUPITER': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '48', 'MILA': '4'}['${system_name}']"}
       - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
       - {name: timelimit,        tag: "container",         _: "02:00:00"}
       - {name: timelimit,        tag: "!container",         _: "00:45:00"} 
@@ -202,10 +207,12 @@ parameterset:
       - name: masteri
         tag: "!(JUPITER|H100)"
         _: |
-          MASTER_ADDR="${MASTER_ADDR}i"
+          export MASTER_ADDR="${MASTER_ADDR}i"
+          export GLOO_USE_IPV6=0
+          export TORCHELASTIC_RUN_ID=""
       - name: masteri
-        tag: "JUPITER"
-        _: " "
+        tag: "JUPITER|H100"
+        _: export MASTER_ADDR="${MASTER_ADDR}"
 
       - name: preprocess
         mode: text
@@ -230,13 +237,11 @@ parameterset:
           export MASTER_ADDR="$$(scontrol show hostnames "$$SLURM_JOB_NODELIST" | head -n 1)"
           $masteri
           export MASTER_PORT=6000
-          export LAUNCHER_DDP="python3.12 $BENCH_DIR/../aux/fixed_torch_run.py \
+          export LAUNCHER_DDP="python3.12 -m torchrun_jsc \
               --nproc_per_node $gpus_per_node \
               --nnodes $nodes \
-              --node_rank $SLURM_PROCID \
               --rdzv_endpoint $MASTER_ADDR:$MASTER_PORT \
               --rdzv_backend c10d \
-              --rdzv_conf=$rdzv_conf \
               --max_restarts 0 \
               --tee 3 \
               "
@@ -245,6 +250,10 @@ parameterset:
               $code_repo/scripts/train.py \
               --config=${config} \
               --dataFile=${data} \
+              --batchSize=${batchSize} \
+              --val_batchSize=${val_batchSize} \
+              --gas=${gas} \
+              --tp_size=${tp_size} \
               --benchmark \
               --use_amp=${use_amp} \
               --use_complex_amp=${use_complex_amp} \
@@ -274,7 +283,7 @@ parameterset:
            echo "export ACCELERATOR=${system_name}"
            echo "export CUDA_VISIBLE_DEVICES=0,1,2,3"
            echo "export TORCH_NCCL_ASYNC_ERROR_HANDLING=1"
-           echo "export OMP_NUM_THREADS=1"
+           echo "export OMP_NUM_THREADS=4"
            echo "${ibcomm}"
 
       - name: executable
@@ -358,16 +367,23 @@ patternset:
       - {name: samples_per_sec, type: int, _: 'Timesteps/s: *(\d+)'}
       - {name: grid,            type: str, _: '-- grid shape\s*:\s*(\([^)]+\))'}
       - {name: particle,        type: int, _: '-- inputShape\s*:\s*\[.*?(\d+)\s*\]'}
+      - {name: particle_shard,  type: int, mode: python, _: "$particle/$tp_size"}
       - {name: globalbs,        type: int,   _: "Using GlobalBatchSize: *$jube_pat_int"}
+      - {name: effective_dp,    type: int,   _: "Using an effective DDP size: *$jube_pat_int"}
+      - {name: tp,              type: int,   _: "Input sharding with *$jube_pat_int"}
       - {name: model_param,     type: float, _: "Total number of model parameters: *$jube_pat_fp"}
+      - {name: microbs,         type: int, mode: python, _: "$globalbs/($gas*$effective_dp)"}
+      - {name: localbs,         type: int, mode: python, _: "$microbs * $gas"}
       - {name: million_param,   type: float, mode: python, _: "$model_param/10**6"}
       - {name: model_mem,       type: float, mode: python, _: "$model_param * 4.0/10**6"}
-      - {name: fwd_mem,         type: float,  _: "CUDA Memory for Fwd Pass - Allocated: *$jube_pat_fp"}
-      - {name: bwd_mem,         type: float,  _: "CUDA Memory for Bwd Pass - Allocated: *$jube_pat_fp"}
-      - {name: act_mem,         type: float,  _: "Estimate Activations Memory: *$jube_pat_fp"}
+      - {name: fwd_mem,         type: float,  _: "CUDA Memory for Fwd Pass - Allocated per Epoch: *$jube_pat_fp"}
+      - {name: bwd_mem,         type: float,  _: "CUDA Memory for Bwd Pass - Allocated per Epoch: *$jube_pat_fp"}
+      - {name: act_mem,         type: float,  _: "Estimate Activations Memory per Epoch: *$jube_pat_fp"}
       - {name: mxp,             type: bool, mode: python,  _: "bool(${use_amp})"}
       - {name: complex_mxp,     type: bool, mode: python,  _: "bool(${use_complex_amp})"}
       - {name: energy_gpu,      type: float, _: 'pynvml:\d\s*$jube_pat_fp'}
+      - {name: total_energy,    type: float, mode: python,  _: '$energy_gpu_avg*$total_devices'}
+      - {name: tflops,          type: float, _: "average TFLOPs = $jube_pat_fp"}
       - name: runtime
         type: float
         mode: python
@@ -394,14 +410,20 @@ result:
           - {title: "Version", _: system_version}
           - {title: "Queue", _: queue}
           - {title: "Nodes", _: nodes}
-          - {title: "DataParallel", _: total_devices}
+          - {title: "TotalDevices", _: total_devices}
+          - {title: "DataParallel", _: effective_dp}
+          - {title: "ParticleShards", tag: "PIC3D", _: tp}
           - {title: "Problem", _: problem}
           - {title: "Config", _: config}
           - {title: "ModelParam (Million)", format: ".2f",_: million_param}
           - {title: "ModelSize (MB)", format: ".2f", _: model_mem}
-          - {title: "Grid", tag: "!eval", _: grid}
-          - {title: "Particles", tag: "!eval", _: particle}
+          - {title: "Grid", tag: "!eval+(RBC2D|RBC3D)", _: grid}
+          - {title: "Particles", tag: "!eval+(PIC1D|PIC2D|PIC3D)", _: particle}
+          - {title: "Particles/shard", tag: "!eval+(PIC1D|PIC2D|PIC3D)", _: particle_shard}
           - {title: "GlobalBatchSize", tag: "!eval", _: globalbs}
+          - {title: "LocalBatchSize", tag: "!eval", _: localbs}
+          - {title: "MicroBatchSize", tag: "!eval", _: microbs}
+          - {title: "GAS", tag: "!eval", _: gas}
           - {title: "InputShape", tag: "eval", _: input_shape}
           - {title: "Runtime (min)", _: runtime}
           - {title: "Epochs", tag: "!eval", _: epochs}
@@ -421,8 +443,9 @@ result:
           - {title: "PeakFwdMem (MB)", tag: "!eval", format: ".2f", _: fwd_mem_avg}
           - {title: "PersistentMem (MB)", tag: "!eval",format: ".2f", _: bwd_mem_avg}
           - {title: "ActivationMem (MB)", tag: "!eval",format: ".2f", _: act_mem_avg}
+          - {title: "TFLOPs", format: ".2f", _: tflops_avg}
           - {title: "Energy/GPU (Wh)", format: ".2f", _: energy_gpu_avg}
-          - {title: "TotalEnergy (Wh)", format: ".2f", _: energy_gpu_sum}
+          - {title: "TotalEnergy (Wh)", format: ".2f", _: total_energy}
 
 
       - name: result_table
@@ -434,18 +457,24 @@ result:
           - {title: "Version", _: system_version}
           - {title: "Queue", _: queue}
           - {title: "Nodes", _: nodes}
-          - {title: "DataParallel", _: total_devices}
+          - {title: "TotalDevices", _: total_devices}
+          - {title: "DataParallel", _: effective_dp}
+          - {title: "ParticleShards", tag: "PIC3D", _: tp}
           - {title: "Problem", _: problem}
           - {title: "Config", _: config}
           - {title: "ModelParam (Million)", format: ".2f",_: million_param}
           - {title: "ModelSize (MB)", format: ".2f", _: model_mem}
-          - {title: "Grid", tag: "!eval", _: grid}
-          - {title: "Particles", tag: "!eval", _: particle}
+          - {title: "Grid", tag: "!eval+(RBC2D|RBC3D)", _: grid}
+          - {title: "Particles", tag: "!eval+(PIC1D|PIC2D|PIC3D)", _: particle}
+          - {title: "Particles/shard", tag: "!eval+(PIC1D|PIC2D|PIC3D)", _: particle_shard}
           - {title: "GlobalBatchSize", tag: "!eval", _: globalbs}
+          - {title: "LocalBatchSize", tag: "!eval", _: localbs}
+          - {title: "MicroBatchSize", tag: "!eval", _: microbs}
+          - {title: "GAS", tag: "!eval", _: gas}
           - {title: "InputShape", tag: "eval", _: input_shape}
           - {title: "Runtime (min)", _: runtime}
           - {title: "Epochs", tag: "!eval", _: epochs}
-          - {title: "MixedPrecision", tag: "!eval",_: mxp}
+          - {title: "MixedPrecision", tag: "!eval", _: mxp}
           - {title: "ComplexMixedPrecision", tag: "!eval", _: complex_mxp}
           - {title: "CompileMode",  _: compile_modes}
           - {title: "MeanCompileTime (s)",  format: ".3f", _: compiletime}
@@ -461,8 +490,10 @@ result:
           - {title: "PeakFwdMem (MB)", tag: "!eval", format: ".2f", _: fwd_mem_avg}
           - {title: "PersistentMem (MB)", tag: "!eval",format: ".2f", _: bwd_mem_avg}
           - {title: "ActivationMem (MB)", tag: "!eval",format: ".2f", _: act_mem_avg}
+          - {title: "TFLOPs", format: ".2f", _: tflops_avg}
           - {title: "Energy/GPU (Wh)", format: ".2f", _: energy_gpu_avg}
-          - {title: "TotalEnergy (Wh)", format: ".2f", _: energy_gpu_sum}
+          - {title: "TotalEnergy (Wh)", format: ".2f", _: total_energy}
+
 
 
 step:
