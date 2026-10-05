@@ -8,7 +8,7 @@ Paper: [Arxiv](https://arxiv.org/abs/2409.12994), [IEEE](https://ieeexplore.ieee
 
 # Tested Accelerators
 
-CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JEDI](https://apps.fz-juelich.de/jsc/hps/jedi/index.html#), [WEST-AI Nodes](https://westai.de/services/hardware/), [NHR-FAU](https://doc.nhr.fau.de/clusters/testcluster/) and [Mila](https://docs.mila.quebec/Information.html#node-profile-description). These include the accelerators: 
+CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JEDI](https://apps.fz-juelich.de/jsc/hps/jedi/index.html#), [WEST-AI Nodes](https://westai.de/services/hardware/), [NHR-FAU](https://doc.nhr.fau.de/clusters/testcluster/), [Mila](https://docs.mila.quebec/Information.html#node-profile-description) and [RIKYU](https://docs.r-ccs.riken.jp/rikyu/en/system/). These include the accelerators: 
 
 ```markdown
 | System                                            | Configuration                                     | Tag       |
@@ -19,12 +19,13 @@ CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-ju
 | NVIDIA Hopper node (NVLink)                       | 4 × H100 (94GB HBM2e) GPUs                        | `WAIH100` |
 | NVIDIA Grace-Hopper chip                          | 1 × GH200 (480GB LPDDR5X, 96GB HBM3) GPU          | `GH200`   |
 | NVIDIA Grace-Hopper node                          | 4 × GH200 (120GB LPDDR5X, 96GB HBM3) GPUs         | `JUPITER` |
+| NVIDIA Grace-Blackwell node                       | 4 × GB200 (960GB LPDDR5X, 173GB HBM3e) GPUs       | `GB200`   |
 | AMD MI300X node                                   | 8 × MI300X (192GB HBM3) GPUs                      | `MI300X`  |
 | AMD MI300A node                                   | 4 × MI300A (128GB HBM3) APUs                      | `MI300A`  |
 | AMD MI200 node                                    | 4 × MI250 (128GB HBM2e) GPUs                      | `MI250`   |
 | Graphcore IPU-POD4 M2000                          | 4 × GC200 (512GB DDR4-3200) IPUs                  | `GC200`   |
 ```
-> **Note**: `MILA` tag is supported only for FNO benchmark.
+> **Note**: `MILA` and `GB200` tag is supported only for FNO benchmark.
 
 # Benchmark
 
@@ -47,11 +48,11 @@ Performance is measured in `tokens/s` and energy is recorded in `Wh`.
 ### 3. Neural Operator: Fourier Neural Operator (FNO)
 The [operator-benchmark](./operator_benchmark/) is implemented in PyTorch with [operator_learning](https://github.com/chelseajohn/operator_learning) for NVIDIA systems. 
 
-It enables comprehensive analysis of mixed-precision training and the performance impact of `torch.compile` during both training and inference of FNO models.
+It enables comprehensive analysis of optimisations during both training and inference of FNO models.
 
 The benchmark includes experiments on two representative problems: 
 - Rayleigh–Bénard convection (RBC) in 2D and 3D 
-- Plasma simulation using Particle-in-Cell (PIC) methods in 1D and 2D.
+- Kinetic plasma simulation using particle based methods (PIC, PIF) in 1D, 2D and 3D.
 
 Performance is measured in `timesteps/s`.
 
@@ -83,6 +84,7 @@ cd CARAML
     ```
    Replace `H100` with one of the following as needed:
    - `MILA` (for A100 80GB, only for FNO benchmark)
+   - `GB200` (for GB200 173GB, only for FNO benchmark)
    - `GH200` (for Arm CPU + H100)
    - `MI250` or `MI300X` or `MI300A` (for AMD)
    - `GC200` (for Graphcore)
@@ -135,11 +137,11 @@ cd CARAML
 To run all problems (`PIC1D`, `PIC2D`, `RBC2D`, `RBC3D`) use `all` tag otherwise use the respective problem tag. 
 
 - Distributed Training: Add the `ddp` tag to enable distributed data parallel (DDP) training.
-- Torch.compile: To run `torch.compile` with different modes of execution for training and inference. Use `eval` tag for inference.
+- Use `eval` tag for inference, default is training.
 
-Example to run training in mixed precision with different `torch.compile` modes on `H100`:
+Example to run training optimisations on `H100` with PIC3D:
 
-`jube run operator_benchmark/fno_benchmark.yaml --tag H100 all`
+`jube run operator_benchmark/fno_benchmark.yaml --tag H100 PIC3D`
 
 `H100` can be replaced with any tag mentioned in [tested accelerators](#tested-accelerators) section.
 
