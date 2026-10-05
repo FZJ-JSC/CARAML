@@ -10,7 +10,7 @@ export CUDA_VISIBLE_DEVICES=0
 
 echo "Using ACCELERATOR=$ACCELERATOR"
 NVIDIA_X86_ACCELERATORS=(A100 H100 WAIH100 MILA)
-NVIDIA_ARM_ACCELERATORS=(JUPITER GH200)
+NVIDIA_ARM_ACCELERATORS=(JUPITER GH200 GB200)
 
 PYTORCH_CONTAINER_FILE_NVIDIA_X86=$ROOT_DIR/containers/ngc2602_pytorch211_cuda13_nccl2289_py312.sif
 PYTORCH_CONTAINER_FILE_NVIDIA_ARM=$ROOT_DIR/containers/ngc2602_pytorch211_cuda13_nccl2289_py312_arm.sif
@@ -41,7 +41,7 @@ fi
 
 
 ##### Installing Containers #####
-if [ "$ACCELERATOR" = "GH200" ]; then
+if [[ "$ACCELERATOR" == "GH200" || "$ACCELERATOR" == "GB200" ]]; then
     if [ -f $PYTORCH_CONTAINER_FILE_NVIDIA_ARM ]; then
         echo "$PYTORCH_CONTAINER_FILE_NVIDIA_ARM" exists >&2
     else
@@ -129,7 +129,6 @@ else
 fi
 
 # clone fno data from hugging face
-# TODO: add pic3d data into hf
 if ! [ -d "fno_data" ]; then
     git clone https://huggingface.co/datasets/chelseajohn/FNOBenchmark fno_data
 else
@@ -151,13 +150,35 @@ if ! [ -d "pySDC" ]; then
 else
     echo "operator_learning directory exists at $BENCH_DIR/ !" >&2
 fi
+# Patch for cuFFT in GB200 with NGC26.02
+if [ "$ACCELERATOR" = "GB200" ]; then
+    apptainer exec $CONTAINER \
+        python -m pip install nvidia-cufft \
+        --target $PYTORCH_PACKAGES_NVIDIA \
+        --no-deps \
+        >&2
+fi
+
 cd $BENCH_DIR
 touch $PYTORCH_PACKAGES_FILE_NVIDIA
 echo "Done building additional packages for $ACCELERATOR in $PYTORCH_PACKAGES_NVIDIA" >&2
 # Creating wrapper for external torch packages
 if ! [ -f $NVIDIA_WRAP ]; then
     echo "creating NVIDIA Container wrapper"
-    printf "%s\n"  "export PYTHONPATH=$PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages:$BENCH_DIR/operator_learning:\$PYTHONPATH" "export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real/libcuda.so.1" "\$*" > $NVIDIA_WRAP
+    if [ "$ACCELERATOR" = "GB200" ]; then
+        printf "%s\n" \
+            "export PYTHONPATH=$PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages:\$PYTHONPATH" \
+            "export PYTHONPATH=$BENCH_DIR/operator_learning:\$PYTHONPATH" \
+            "export PYTHONPATH=$PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages/pytorch-finufft:\$PYTHONPATH" \
+            "export LD_PRELOAD=$PYTORCH_PACKAGES_NVIDIA/nvidia/cu13/lib/libcufft.so.12" \
+            "export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real/libcuda.so.1" \
+            "\$*" > $NVIDIA_WRAP
+    else
+        printf "%s\n" \
+            "export PYTHONPATH=$PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages:$BENCH_DIR/operator_learning:\$PYTHONPATH" \
+            "export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real/libcuda.so.1" \
+            "\$*" > $NVIDIA_WRAP
+    fi
     chmod u+rwx $NVIDIA_WRAP
 fi
 touch $DONE_FILE
