@@ -134,14 +134,14 @@ cd CARAML
 
 ## FNO Training & Inference Benchmark
 
-To run all problems (`PIC1D`, `PIC2D`, `RBC2D`, `RBC3D`) use `all` tag otherwise use the respective problem tag. 
+To run all problems (`PIC1D`, `PIC2D`, `PIC3D`, `RBC2D`, `RBC3D`) use `all` tag otherwise use the respective problem tag. 
 
 - Distributed Training: Add the `ddp` tag to enable distributed data parallel (DDP) training.
 - Use `eval` tag for inference, default is training.
 
-Example to run training optimisations on `H100` with PIC3D:
+Example to run training optimisations on `A100` with PIC3D:
 
-`jube run operator_benchmark/fno_benchmark.yaml --tag H100 PIC3D`
+`jube run operator_benchmark/fno_benchmark.yaml --tag A100 PIC3D`
 
 `H100` can be replaced with any tag mentioned in [tested accelerators](#tested-accelerators) section.
 
