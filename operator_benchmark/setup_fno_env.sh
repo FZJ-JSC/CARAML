@@ -12,8 +12,8 @@ echo "Using ACCELERATOR=$ACCELERATOR"
 NVIDIA_X86_ACCELERATORS=(A100 H100 WAIH100 MILA)
 NVIDIA_ARM_ACCELERATORS=(JUPITER GH200 GB200)
 
-PYTORCH_CONTAINER_FILE_NVIDIA_X86=$ROOT_DIR/containers/ngc2602_pytorch211_cuda13_nccl2289_py312.sif
-PYTORCH_CONTAINER_FILE_NVIDIA_ARM=$ROOT_DIR/containers/ngc2602_pytorch211_cuda13_nccl2289_py312_arm.sif
+PYTORCH_CONTAINER_FILE_NVIDIA_X86=$ROOT_DIR/containers/ngc2609_pytorch214_cuda1341_nccl2312_py312.sif
+PYTORCH_CONTAINER_FILE_NVIDIA_ARM=$ROOT_DIR/containers/ngc2609_pytorch214_cuda1341_nccl2312_py312_arm.sif
 PYTORCH_CONTAINER_FILE_DONE=$BENCH_DIR/fno_container_done
 
 PYTORCH_PACKAGES_NVIDIA_x86=$BENCH_DIR/nvidia_fno_packages_x86
@@ -37,30 +37,28 @@ if [ -f $PYTORCH_CONTAINER_FILE_DONE ]; then
 else
     export APPTAINER_CACHEDIR=$(mktemp -d -p $ROOT_DIR/containers/tmp_dir)
     export APPTAINER_TMPDIR=$(mktemp -d -p $ROOT_DIR/containers/tmp_dir)
-fi
-
-
-##### Installing Containers #####
-if [[ "$ACCELERATOR" == "GH200" || "$ACCELERATOR" == "GB200" ]]; then
-    if [ -f $PYTORCH_CONTAINER_FILE_NVIDIA_ARM ]; then
-        echo "$PYTORCH_CONTAINER_FILE_NVIDIA_ARM" exists >&2
-    else
-        # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-26-02.html
-        apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_ARM docker://nvcr.io/nvidia/pytorch:26.02-py3 >&2
-        echo "Done pulling $PYTORCH_CONTAINER_FILE_NVIDIA_ARM"  >&2
-    fi
-else
-    if [ -f $PYTORCH_CONTAINER_FILE_NVIDIA_X86 ]; then
-        echo "$PYTORCH_CONTAINER_FILE_NVIDIA_X86" exists >&2
-    else
-        # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-26-02.html
-        if [ "$ACCELERATOR" = "MILA" ]; then
-            ml load singularity/3.7.1
-            singularity pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:26.02-py3 >&2
+    ##### Installing Containers #####
+    if [[ "$ACCELERATOR" == "GH200" || "$ACCELERATOR" == "GB200" ]]; then
+        if [ -f $PYTORCH_CONTAINER_FILE_NVIDIA_ARM ]; then
+            echo "$PYTORCH_CONTAINER_FILE_NVIDIA_ARM" exists >&2
         else
-            apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:26.02-py3 >&2
+            # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-26-09.html
+            apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_ARM docker://nvcr.io/nvidia/pytorch:26.09-py3 >&2
+            echo "Done pulling $PYTORCH_CONTAINER_FILE_NVIDIA_ARM"  >&2
         fi
-        echo "Done pulling $PYTORCH_CONTAINER_FILE_NVIDIA_X86"  >&2
+    else
+        if [ -f $PYTORCH_CONTAINER_FILE_NVIDIA_X86 ]; then
+            echo "$PYTORCH_CONTAINER_FILE_NVIDIA_X86" exists >&2
+        else
+            # https://docs.nvidia.com/deeplearning/frameworks/pytorch-release-notes/rel-26-09.html
+            if [ "$ACCELERATOR" = "MILA" ]; then
+                ml load singularity/3.7.1
+                singularity pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:26.09-py3 >&2
+            else
+                apptainer pull $PYTORCH_CONTAINER_FILE_NVIDIA_X86 docker://nvcr.io/nvidia/pytorch:26.09-py3 >&2
+            fi
+            echo "Done pulling $PYTORCH_CONTAINER_FILE_NVIDIA_X86"  >&2
+        fi
     fi
 fi
 
@@ -132,32 +130,34 @@ fi
 if ! [ -d "fno_data" ]; then
     git clone https://huggingface.co/datasets/chelseajohn/FNOBenchmark fno_data
 else
-    echo "operator_learning directory exists at $BENCH_DIR/ !" >&2
+    echo "fno_data directory exists at $BENCH_DIR/fno_data !" >&2
 fi
 
-# clone pySDC 
-cd $PYTORCH_PACKAGES_NVIDIA/local/lib/python*/dist-packages/
-if ! [ -d "pySDC" ]; then
-    git clone https://github.com/Parallel-in-Time/pySDC.git pySDC
-    cd pySDC
-    if [ "$ACCELERATOR" = "MILA" ]; then
-        singularity exec --nv -B $SCRATCH $CONTAINER \
-            python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
-    else
-        apptainer exec $CONTAINER \
-            python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
-    fi
-else
-    echo "operator_learning directory exists at $BENCH_DIR/ !" >&2
-fi
+# clone pySDC for RBC
+# cd $PYTORCH_PACKAGES_NVIDIA/local/lib/python*/dist-packages/
+# if ! [ -d "pySDC" ]; then
+#     git clone https://github.com/Parallel-in-Time/pySDC.git pySDC
+#     cd pySDC
+#     if [ "$ACCELERATOR" = "MILA" ]; then
+#         singularity exec --nv -B $SCRATCH $CONTAINER \
+#             python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
+#     else
+#         apptainer exec $CONTAINER \
+#             python -m pip install --prefix=$PYTORCH_PACKAGES_NVIDIA -e .
+#     fi
+# else
+#     echo "operator_learning directory exists at $BENCH_DIR/ !" >&2
+# fi
+
+
 # Patch for cuFFT in GB200 with NGC26.02
-if [ "$ACCELERATOR" = "GB200" ]; then
-    apptainer exec $CONTAINER \
-        python -m pip install nvidia-cufft \
-        --target $PYTORCH_PACKAGES_NVIDIA \
-        --no-deps \
-        >&2
-fi
+# if [ "$ACCELERATOR" = "GB200" ]; then
+#     apptainer exec $CONTAINER \
+#         python -m pip install nvidia-cufft \
+#         --target $PYTORCH_PACKAGES_NVIDIA \
+#         --no-deps \
+#         >&2
+# fi
 
 cd $BENCH_DIR
 touch $PYTORCH_PACKAGES_FILE_NVIDIA
@@ -170,9 +170,10 @@ if ! [ -f $NVIDIA_WRAP ]; then
             "export PYTHONPATH=$PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages:\$PYTHONPATH" \
             "export PYTHONPATH=$BENCH_DIR/operator_learning:\$PYTHONPATH" \
             "export PYTHONPATH=$PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages/pytorch-finufft:\$PYTHONPATH" \
-            "export LD_PRELOAD=$PYTORCH_PACKAGES_NVIDIA/nvidia/cu13/lib/libcufft.so.12" \
             "export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real/libcuda.so.1" \
             "\$*" > $NVIDIA_WRAP
+            # "export LD_PRELOAD=$PYTORCH_PACKAGES_NVIDIA/nvidia/cu13/lib/libcufft.so.12" \
+            # "export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real/libcuda.so.1" \
     else
         printf "%s\n" \
             "export PYTHONPATH=$PYTORCH_PACKAGES_NVIDIA/local/lib/python3.12/dist-packages:$BENCH_DIR/operator_learning:\$PYTHONPATH" \

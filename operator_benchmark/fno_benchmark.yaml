@@ -1,5 +1,5 @@
 name:    fno-nvidia
-outpath: fno_benchmark_run
+outpath: fno_benchmark_A100_ozaki_6432
 comment: fno benchmark jube script for NVIDIA-A100, H100, GH200, GB200
 # FNO Benchmark for 
   # JUPITER-GH200 NVIDIA Node:
@@ -103,7 +103,7 @@ parameterset:
         _: >
           {'PIC1D': '${jube_benchmark_home}/fno_data/PIC1D_electrostatic.h5',
           'PIC2D': '${jube_benchmark_home}/fno_data/PIC2D_electrostatic.h5',
-          'PIC3D': '${jube_benchmark_home}/fno_data/PIF3D_sl_penning_100k_QL_normalize.h5',
+          'PIC3D': '${jube_benchmark_home}/fno_data/test3d_samples_32_1M.h5',
           'RBC2D': '${jube_benchmark_home}/fno_data/RBC2D_256x64_Ra1e7_dt1e-3_update.h5',
           'RBC3D': '${jube_benchmark_home}/fno_data/RBC3D_64x64x32_Ra1e5_dt0_5_solution.h5'}['$problem']
       - name: config
@@ -112,7 +112,7 @@ parameterset:
         _: >
           {'PIC1D': '${code_repo}/config/electrostatic_plasma1d_pic.yaml',
           'PIC2D': '${code_repo}/config/electrostatic_plasma2d_pic.yaml',
-          'PIC3D': '${code_repo}/config/electrostatic_plasma3d_pic.yaml',
+          'PIC3D': '${code_repo}/config/electrostatic_plasma3d_pif.yaml',
           'RBC2D': '${code_repo}/config/rbc2d_dedalus.yaml',
           'RBC3D': '${code_repo}/config/rbc3d_pysdc.yaml'}['$problem']
       - {name: batchSize, type: int, separator: ";", _: 4}
@@ -168,7 +168,7 @@ parameterset:
       - {name: account,         tag: "MILA",              _: "mila"}
       - {name: account,         tag: "GB200",             _: ""}
       - {name: queue,           mode: python,
-         _: "{'JUPITER': 'exalab', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'booster', 'MILA': 'long', 'GB200': ''}['${system_name}']"}
+         _: "{'JUPITER': 'booster', 'GH200': 'dc-gh','WAIH100': 'dc-hwai','H100': 'dc-h100' ,'A100': 'booster', 'MILA': 'long', 'GB200': ''}['${system_name}']"}
       - {name: nodes,            type: int, tag: "container",   _: 1}
       - {name: nodes,            type: int, tag: "!container", separator: ";",  _: "${tp_size}"}
       - {name: gpus_per_node,    type: int, tag: "container|!ddp", _: 1}
@@ -204,9 +204,9 @@ parameterset:
         _: |
            #SBATCH --gpus=${total_devices}
       - {name: singularity_file, type: str, tag: "JUPITER|GH200|GB200",
-         _: "${root_dir}/containers/ngc2602_pytorch211_cuda13_nccl2289_py312_arm.sif"}
+         _: "${root_dir}/containers/ngc2609_pytorch214_cuda1341_nccl2312_py312_arm.sif"}
       - {name: singularity_file, type: str, tag: "WAIH100|H100|A100|MILA", 
-         _: "${root_dir}/containers/ngc2602_pytorch211_cuda13_nccl2289_py312.sif"}
+         _: "${root_dir}/containers/ngc2609_pytorch214_cuda1341_nccl2312_py312.sif"}
 
       - name: ibcomm
         tag: "!(GH200|GB200)"
@@ -261,7 +261,7 @@ parameterset:
           export MASTER_ADDR="$$(scontrol show hostnames "$$SLURM_JOB_NODELIST" | head -n 1)"
           $masteri
           export MASTER_PORT=6000
-          export LAUNCHER_DDP="python3.12 -m torch.distributed.run \
+          export LAUNCHER_DDP="python3.12 -m torchrun_jsc \
               --nproc_per_node $gpus_per_node \
               --nnodes $nodes \
               --rdzv_endpoint $MASTER_ADDR:$MASTER_PORT \
@@ -282,7 +282,9 @@ parameterset:
               --use_amp=${use_amp} \
               --use_complex_amp=${use_complex_amp} \
               --compile_train=${compile_train} \
-              --compile_mode=${compile_modes}
+              --compile_mode=${compile_modes} \
+              --model_dtype float64 \
+              --fno_dtype float32
               "
           export EVAL_CMD="\
                 $code_repo/scripts/benchmark/fno_compile.py \

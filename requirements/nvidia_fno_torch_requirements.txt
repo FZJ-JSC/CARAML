@@ -3,6 +3,7 @@ calflops
 configmypy
 coverage
 cufinufft
+cupy
 finufft
 h5py
 hf-xet
@@ -13,13 +14,14 @@ matplotlib
 mpi4py
 mpmath
 numpy
-opt_einsum
+opt-einsum
 pandas
+pillow
 py-cpuinfo
 pytest-benchmark
 pyvista
 PyYAML
-pytorch-finufft
+pytorch-finufft[cuda]
 python-slugify
 qmat
 ruamel.yaml
