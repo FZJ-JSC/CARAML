@@ -27,6 +27,7 @@ qmat
 ruamel.yaml
 safetensors
 scipy
+scikit-build-core
 tensorboard
 torchkbnufft
 tokenizers
