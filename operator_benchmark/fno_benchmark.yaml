@@ -1,5 +1,5 @@
 name:    fno-nvidia
-outpath: fno_benchmark_A100_ozaki_6432
+outpath: fno_benchmark
 comment: fno benchmark jube script for NVIDIA-A100, H100, GH200, GB200
 # FNO Benchmark for 
   # JUPITER-GH200 NVIDIA Node:
@@ -33,8 +33,8 @@ comment: fno benchmark jube script for NVIDIA-A100, H100, GH200, GB200
   #    SMT-2 (total: 2×36×2 = 144 threads) (details for Intel Xeon Platinum 8452Y on Intel ARK)
   #   Memory: 512 GiB DDR5-4800 RAM (of which at least 20 GB is taken by the system software stack,\
   #    including the file system); 256 GB per socket;
-  #   GPU: 4 × NVIDIA H100 PCIe GPUs, each with 80 GB memory;
-  #   Network: 1 × 1x BlueField-2 ConnectX-6 DPU @ EDR (100 Gbit/s)
+  #   GPU: 4 × NVIDIA H100 PCIe GPUs, each with 80 GB HBM2e memory;
+  #   Network: 1× BlueField-2 ConnectX-6 DPU @ EDR (100 Gbit/s)
   #   Available: 1 node
 
   # JURECA-A100 NVIDIA Node:
@@ -45,9 +45,17 @@ comment: fno benchmark jube script for NVIDIA-A100, H100, GH200, GB200
   #   Network: 2× InfiniBand HDR (NVIDIA Mellanox Connect-X6)
   #   Available: 192 nodes
 
+  # JUWELS-A100 NVIDIA Node:
+  #   4x NVIDIA A100 Ampere-SXM
+  #   CPU: 2× AMD EPYC 7402, 2× 24 cores
+  #   Memory: 512 GB DDR4
+  #   GPU: 4× NVIDIA A100 GPU, 4× 40 GB HBM2e
+  #   Network: 4× InfiniBand HDR (NVIDIA Mellanox Connect-X6)
+  #   Available: 936 nodes
+
   # MILA-A100 NVIDIA:
   #   1x NVIDIA A100 Ampere-SXM
-  #   CPU: 2x AMD64, 2x 32 cores or 2x AMD64, 2x 64 cores
+  #   CPU: 2x  AMD EPYC 7742, 2x 64 cores
   #   Memory: 1024 GB or 2048 GB
   #   GPU: 4x/8x NVIDIA A100 GPU, 4x/8x  80 GB HBM2e 
 
@@ -118,7 +126,7 @@ parameterset:
       - {name: batchSize, type: int, separator: ";", _: 4}
       - {name: val_batchSize, type: int, separator: ";", _: 1}
       - {name: gas, type: int, separator: ";", _: 1}
-      - {name: tp_size, type: int, separator: ";", _: "1;2;4;8;16"}
+      - {name: tp_size, type: int, separator: ";", _: "1"}
       - {name: use_amp, type: int, tag: "!eval", separator: ";", _: "0"}
       - name: use_complex_amp
         mode: python
@@ -181,7 +189,7 @@ parameterset:
         _: "{'JUPITER': '72', 'GH200': '72','WAIH100': '64','H100': '72', 'A100': '48', 'MILA': '4', 'GB200': '32'}['${system_name}']"}
       - {name: threadspertask,  type: int, mode: python, tag: "container", _: 4}
       - {name: timelimit,        tag: "container",         _: "02:00:00"}
-      - {name: timelimit,        tag: "!container",         _: "00:45:00"} 
+      - {name: timelimit,        tag: "!container",         _: "01:45:00"} 
       - {name: outlogfile,                                _: "job.out"}
       - {name: outerrfile,                                _: "job.err"}
       - {name: ready_file,                _: "ready"}
@@ -283,7 +291,7 @@ parameterset:
               --use_complex_amp=${use_complex_amp} \
               --compile_train=${compile_train} \
               --compile_mode=${compile_modes} \
-              --model_dtype float64 \
+              --model_dtype float32 \
               --fno_dtype float32
               "
           export EVAL_CMD="\

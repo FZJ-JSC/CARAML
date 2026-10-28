@@ -8,7 +8,7 @@ Paper: [Arxiv](https://arxiv.org/abs/2409.12994), [IEEE](https://ieeexplore.ieee
 
 # Tested Accelerators
 
-CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JEDI](https://apps.fz-juelich.de/jsc/hps/jedi/index.html#), [WEST-AI Nodes](https://westai.de/services/hardware/), [NHR-FAU](https://doc.nhr.fau.de/clusters/testcluster/), [Mila](https://docs.mila.quebec/Information.html#node-profile-description) and [RIKYU](https://docs.r-ccs.riken.jp/rikyu/en/system/). These include the accelerators: 
+CARAML has been tested on the [JURECA-DC EVALUATION PLATFORM](https://apps.fz-juelich.de/jsc/hps/jureca/evaluation-platform-overview.html), [JURECA-DC](https://apps.fz-juelich.de/jsc/hps/jureca/configuration.html), [JUWELS BOOSTER](https://apps.fz-juelich.de/jsc/hps/juwels/index.html), [JUPITER](https://apps.fz-juelich.de/jsc/hps/jupiter/index.html), [WEST-AI Nodes](https://westai.de/services/hardware/), [NHR-FAU](https://doc.nhr.fau.de/clusters/testcluster/), [Mila](https://docs.mila.quebec/Information.html#node-profile-description) and [RIKYU](https://docs.r-ccs.riken.jp/rikyu/en/system/). These include the accelerators: 
 
 ```markdown
 | System                                            | Configuration                                     | Tag       |
